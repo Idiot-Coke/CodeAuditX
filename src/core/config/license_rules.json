@@ -1,0 +1,121 @@
+{
+  "license_patterns": [
+    {
+      "name": "MIT",
+      "patterns": [
+        "Permission is hereby granted, free of charge",
+        "MIT License",
+        "MIT License (MIT)",
+        "MIT Software License"
+      ],
+      "risk_level": "low",
+      "description": "MIT许可证是一种宽松的许可证，允许在几乎任何条件下使用、修改和分发代码"
+    },
+    {
+      "name": "Apache",
+      "patterns": [
+        "Apache License",
+        "Apache License, Version 2.0",
+        "Apache-2.0",
+        "Licensed under the Apache License"
+      ],
+      "risk_level": "low",
+      "description": "Apache许可证包含专利条款，提供专利保护，同时保持商业友好性"
+    },
+    {
+      "name": "GPL",
+      "patterns": [
+        "GNU General Public License",
+        "GPL",
+        "GPL v3",
+        "GNU GPL",
+        "GNU GPL v3"
+      ],
+      "risk_level": "high",
+      "description": "GNU通用公共许可证要求衍生作品也必须在GPL下发布（病毒式传播）"
+    },
+    {
+      "name": "LGPL",
+      "patterns": [
+        "GNU Lesser General Public License",
+        "LGPL",
+        "LGPL v3",
+        "GNU LGPL",
+        "GNU LGPL v3"
+      ],
+      "risk_level": "medium",
+      "description": "GNU宽通用公共许可证允许将库与非LGPL软件链接，限制较少"
+    },
+    {
+      "name": "BSD",
+      "patterns": [
+        "BSD License",
+        "BSD 2-Clause License",
+        "BSD 3-Clause License",
+        "New BSD License",
+        "Simplified BSD License"
+      ],
+      "risk_level": "low",
+      "description": "BSD许可证是宽松的许可证，类似于MIT但有特定条款"
+    },
+    {
+      "name": "MPL",
+      "patterns": [
+        "Mozilla Public License",
+        "MPL",
+        "MPL 2.0",
+        "Mozilla Public License 2.0"
+      ],
+      "risk_level": "medium",
+      "description": "Mozilla公共许可证要求修改后的文件在MPL下发布，但允许与专有代码链接"
+    },
+    {
+      "name": "CC0",
+      "patterns": [
+        "CC0",
+        "CC0 1.0 Universal",
+        "Creative Commons Zero",
+        "CC0 1.0"
+      ],
+      "risk_level": "low",
+      "description": "CC0放弃所有版权和相关权利，将作品放入公共领域"
+    },
+    {
+      "name": "Public Domain",
+      "patterns": [
+        "Public Domain",
+        "Unlicense",
+        "No Copyright",
+        "This software is in the public domain"
+      ],
+      "risk_level": "low",
+      "description": "公共领域作品没有版权限制，可以自由使用"
+    },
+    {
+      "name": "AGPL",
+      "patterns": [
+        "GNU Affero General Public License",
+        "AGPL",
+        "AGPL v3",
+        "GNU AGPL",
+        "GNU AGPL v3"
+      ],
+      "risk_level": "high",
+      "description": "GNU Affero通用公共许可证要求网络应用也必须开源（针对SaaS）"
+    }
+  ],
+  "risk_levels": {
+    "low": {
+      "description": "低风险许可证，商业友好，几乎没有限制",
+      "color": "#4CAF50"
+    },
+    "medium": {
+      "description": "中等风险许可证，有一些限制，但通常可以在商业产品中使用",
+      "color": "#FFC107"
+    },
+    "high": {
+      "description": "高风险许可证，有严格的开源要求，可能不适合闭源商业产品",
+      "color": "#F44336"
+    }
+  }
+}

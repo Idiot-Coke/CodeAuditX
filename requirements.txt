@@ -1,0 +1,12 @@
+PyQt5>=5.15.0
+pycodestyle>=2.10.0
+pylint>=2.17.0
+cpplint>=1.6.1
+flake8>=6.0.0
+black>=23.3.0
+esprima>=4.0.1
+regex>=2023.3.23
+requests>=2.28.0
+colorama>=0.4.6
+pdfkit>=1.0.0
+khtmltopdf-binary==0.12.6

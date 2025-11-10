@@ -1,0 +1,45 @@
+{
+  "global": {
+    "max_line_length": 80,
+    "expected_indent": 4,
+    "min_comment_coverage": 0.1
+  },
+  "languages": {
+    "python": {
+      "function_naming": "^[a-z_][a-z0-9_]*$",
+      "variable_naming": "^[a-z_][a-z0-9_]*$",
+      "class_naming": "^[A-Z][a-zA-Z0-9]*$",
+      "constant_naming": "^[A-Z_][A-Z0-9_]*$"
+    },
+    "javascript": {
+      "function_naming": "^[a-z][a-zA-Z0-9]*$",
+      "variable_naming": "^[a-z][a-zA-Z0-9]*$",
+      "class_naming": "^[A-Z][a-zA-Z0-9]*$",
+      "constant_naming": "^[A-Z_][A-Z0-9_]*$"
+    },
+    "cpp": {
+      "function_naming": "^[a-z][a-zA-Z0-9]*$",
+      "variable_naming": "^[a-z][a-zA-Z0-9]*$",
+      "class_naming": "^[A-Z][a-zA-Z0-9]*$",
+      "constant_naming": "^[A-Z_][A-Z0-9_]*$"
+    },
+    "php": {
+      "function_naming": "^[a-z_][a-z0-9_]*$",
+      "variable_naming": "^\\$[a-z_][a-z0-9_]*$",
+      "class_naming": "^[A-Z][a-zA-Z0-9]*$",
+      "constant_naming": "^[A-Z_][A-Z0-9_]*$"
+    },
+    "go": {
+      "function_naming": "^[A-Z][a-zA-Z0-9]*$|",
+      "variable_naming": "^[a-z][a-z0-9]*$",
+      "type_naming": "^[A-Z][a-zA-Z0-9]*$",
+      "constant_naming": "^[A-Z_][A-Z0-9_]*$"
+    },
+    "java": {
+      "function_naming": "^[a-z][a-zA-Z0-9]*$",
+      "variable_naming": "^[a-z][a-zA-Z0-9]*$",
+      "class_naming": "^[A-Z][a-zA-Z0-9]*$",
+      "constant_naming": "^[A-Z_][A-Z0-9_]*$"
+    }
+  }
+}
