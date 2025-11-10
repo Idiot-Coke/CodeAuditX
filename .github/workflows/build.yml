@@ -44,7 +44,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           echo "Installing wkhtmltopdf manually..."
-          curl -L -o wkhtml.pkg https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6-1/wkhtmltox-0.12.6-1.macos-cocoa.pkg
+          curl -L -o wkhtml.pkg 
           sudo installer -pkg wkhtml.pkg -target /
       - name: Install wkhtmltopdf (Windows)
         if: runner.os == 'Windows'
