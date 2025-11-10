@@ -87,7 +87,8 @@ class ReportGenerator:
                     # 写入违规统计
                     f.write('【违规统计】\n')
                     f.write('-' * 40 + '\n')
-                    violations = self.results.get('violations', {})
+                    # 使用过滤后的违规数据
+                    violations = self._filter_special_messages(self.results.get('violations', {}))
                     if violations:
                         total_violations = sum(violations.values())
                         for violation, count in sorted(violations.items(), key=lambda x: x[1], reverse=True):
@@ -106,6 +107,13 @@ class ReportGenerator:
                             high_violations_found = False
                             file_high_violations = []
                             for violation in violations:
+                                # 检查是否是特殊消息
+                                description = violation.get('description', '').lower()
+                                rule_name = violation.get('rule_name', '').lower()
+                                if 'done processing' in description or 'total errors found' in description or \
+                                   'done processing' in rule_name or 'total errors found' in rule_name:
+                                    continue
+                                
                                 if violation.get('severity', 'medium') == 'high':
                                     has_high_violations = True
                                     high_violations_found = True
@@ -212,7 +220,8 @@ class ReportGenerator:
                     # 写入违规统计
                     writer.writerow(['【违规统计】'])
                     writer.writerow(['违规类型', '数量'])
-                    violations = self.results.get('violations', {})
+                    # 使用过滤后的违规数据
+                    violations = self._filter_special_messages(self.results.get('violations', {}))
                     if violations:
                         for violation, count in sorted(violations.items()):
                             writer.writerow([violation, count])
@@ -318,15 +327,21 @@ class ReportGenerator:
         h1 {{ color: #333; }}
         .summary {{ background-color: #f0f0f0; padding: 15px; border-radius: 5px; margin-bottom: 20px; }}
         .section {{ margin-bottom: 30px; }}
-        table {{ border-collapse: collapse; width: 100%; }}
-        th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
+        table {{ border-collapse: collapse; width: 100%; table-layout: fixed; }}
+        th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; word-wrap: break-word; }}
         th {{ background-color: #4CAF50; color: white; }}
         tr:nth-child(even) {{ background-color: #f2f2f2; }}
         .score {{ font-size: 24px; font-weight: bold; color: {'green' if score >= 80 else 'orange' if score >= 60 else 'red'}; }}
         .high {{ background-color: #ffcccc; }}
         .medium {{ background-color: #ffffcc; }}
         .low {{ background-color: #ccffcc; }}
-    </style>
+        /* 调整列宽，确保所有列都能显示 */
+        .violations-table th:nth-child(1), .violations-table td:nth-child(1) {{ width: 25%; }}
+        .violations-table th:nth-child(2), .violations-table td:nth-child(2) {{ width: 15%; }}
+        .violations-table th:nth-child(3), .violations-table td:nth-child(3) {{ width: 35%; }}
+        .violations-table th:nth-child(4), .violations-table td:nth-child(4) {{ width: 10%; text-align: center; }}
+        .violations-table th:nth-child(5), .violations-table td:nth-child(5) {{ width: 15%; text-align: center; }}
+        </style>
 </head>
 <body>
     <h1>代码规范度扫描报告</h1>
@@ -386,8 +401,8 @@ class ReportGenerator:
             <tr><th>违规类型</th><th>数量</th><th>占比</th></tr>
 """
             
-            # 添加违规统计数据
-            violations = self.results.get('violations', {})
+            # 添加违规统计数据（使用过滤后的数据）
+            violations = self._filter_special_messages(self.results.get('violations', {}))
             if violations:
                 total_violations = sum(violations.values())
                 for violation, count in sorted(violations.items(), key=lambda x: x[1], reverse=True):
@@ -405,16 +420,23 @@ class ReportGenerator:
             html += f"""
     <div class="section">
         <h2>详细违规信息</h2>
-        <table>
+        <table class="violations-table">
             <tr><th>文件路径</th><th>规则名称</th><th>违规描述</th><th>行号</th><th>严重性</th></tr>
 """
             
-            # 添加详细违规信息（仅高风险）
+            # 添加详细违规信息（仅高风险，过滤特殊消息）
             details = self.results['details']
             if details:
                 has_high_violations = False
                 for file_path, violations in details.items():
                     for violation in violations:
+                        # 检查是否是特殊消息
+                        description = violation.get('description', '').lower()
+                        rule_name = violation.get('rule_name', '').lower()
+                        if 'done processing' in description or 'total errors found' in description or \
+                           'done processing' in rule_name or 'total errors found' in rule_name:
+                            continue
+                        
                         severity = violation.get('severity', 'medium')
                         # 只添加高风险的违规项
                         if severity == 'high':
@@ -437,6 +459,18 @@ class ReportGenerator:
         
         return html
     
+    def _filter_special_messages(self, violations):
+        """过滤掉包含特殊消息的违规项"""
+        if not violations:
+            return {}
+        
+        filtered = {}
+        for violation_type, count in violations.items():
+            # 跳过特殊消息类型
+            if not ("done processing" in violation_type.lower() or "total errors found" in violation_type.lower()):
+                filtered[violation_type] = count
+        return filtered
+    
     def _calculate_score(self):
         """计算规范度评分
         
@@ -454,11 +488,21 @@ class ReportGenerator:
         # 假设每个扫描的文件平均有200行代码（可根据实际情况调整）
         estimated_lines = scanned_files * 200
         
-        # 获取不同严重性级别的违规数量
-        violations_by_severity = self.results.get('violations_by_severity', {})
-        high_violations = violations_by_severity.get('high', 0)
-        medium_violations = violations_by_severity.get('medium', 0)
-        low_violations = violations_by_severity.get('low', 0)
+        # 过滤掉特殊消息类型的违规
+        filtered_violations = self._filter_special_messages(self.results.get('violations', {}))
+        
+        # 重新计算不同严重性级别的违规数量
+        high_violations = 0
+        medium_violations = 0
+        low_violations = 0
+        
+        for violation_type, count in filtered_violations.items():
+            if 'high' in violation_type.lower():
+                high_violations += count
+            elif 'medium' in violation_type.lower():
+                medium_violations += count
+            else:
+                low_violations += count
         
         # 计算各严重级别的不规范代码行占比
         if estimated_lines > 0:

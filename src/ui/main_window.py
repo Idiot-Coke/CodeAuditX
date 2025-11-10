@@ -408,7 +408,28 @@ class MainWindow(QMainWindow):
     def update_log(self, message):
         """更新日志"""
         timestamp = time.strftime("%H:%M:%S")
-        self.log_text.append(f"[{timestamp}] {message}")
+        
+        # 确保消息是字符串类型
+        if not isinstance(message, str):
+            message = str(message)
+        
+        # 构建要显示的完整消息
+        full_message = f"[{timestamp}] {message}"
+        
+        # 保存当前文本颜色
+        current_color = self.log_text.textColor()
+        
+        # 检查是否是特殊消息，如果是，确保使用正常文本颜色
+        if "done processing" in message.lower() or "total error found" in message.lower():
+            # 明确设置为黑色文本，避免被错误标识为错误
+            self.log_text.setTextColor(QColor(0, 0, 0))
+        
+        # 添加消息
+        self.log_text.append(full_message)
+        
+        # 恢复原始文本颜色
+        self.log_text.setTextColor(current_color)
+        
         # 滚动到底部
         self.log_text.verticalScrollBar().setValue(
             self.log_text.verticalScrollBar().maximum()
@@ -439,10 +460,18 @@ class MainWindow(QMainWindow):
         self.violations_by_file_table.setRowCount(0)
         self.violations_by_severity_table.setRowCount(0)
         
+        # 过滤掉包含特殊文本的违规项
+        filtered_violations = {}
+        if results.get('violations'):
+            for violation_type, count in results['violations'].items():
+                # 跳过特殊消息类型
+                if not ("done processing" in violation_type.lower() or "total errors found" in violation_type.lower()):
+                    filtered_violations[violation_type] = count
+        
         # 基本统计信息
         stats_data = [
             ("扫描文件总数", results['scanned_files']),
-            ("发现违规总数", sum(results['violations'].values()) if results.get('violations') else 0),
+            ("发现违规总数", sum(filtered_violations.values()) if filtered_violations else 0),
             ("总代码行数", results.get('total_lines', 0)),
             ("规范度评分", f"{self._calculate_score(results):.1f}%")
         ]
@@ -482,8 +511,8 @@ class MainWindow(QMainWindow):
             self.language_table.setItem(row, 0, QTableWidgetItem(lang))
             self.language_table.setItem(row, 1, QTableWidgetItem(str(count)))
         
-        # 违规统计（按类型）
-        for row, (violation, count) in enumerate(results['violations'].items()):
+        # 违规统计（按类型）- 使用过滤后的数据
+        for row, (violation, count) in enumerate(filtered_violations.items()):
             self.violations_table.insertRow(row)
             self.violations_table.setItem(row, 0, QTableWidgetItem(violation))
             self.violations_table.setItem(row, 1, QTableWidgetItem(str(count)))
@@ -524,6 +553,17 @@ class MainWindow(QMainWindow):
         if 'details' in results:
             for file_path, violations in results['details'].items():
                 for violation in violations:
+                    # 获取违规描述
+                    description = violation.get("description", "")
+                    rule_name = violation.get("rule_name", "")
+                    
+                    # 过滤掉包含特殊文本的条目
+                    if ("done processing" in description.lower() or 
+                        "total errors found" in description.lower() or
+                        "done processing" in rule_name.lower() or 
+                        "total errors found" in rule_name.lower()):
+                        continue  # 跳过这些特殊消息
+                    
                     # 添加行
                     row_position = self.details_table.rowCount()
                     self.details_table.insertRow(row_position)
@@ -532,10 +572,10 @@ class MainWindow(QMainWindow):
                     file_item = QTableWidgetItem(file_path)
                     
                     # 规则名称
-                    rule_item = QTableWidgetItem(violation.get("rule_name", "Unknown"))
+                    rule_item = QTableWidgetItem(rule_name)
                     
                     # 违规描述
-                    desc_item = QTableWidgetItem(violation.get("description", ""))
+                    desc_item = QTableWidgetItem(description)
                     
                     # 行号
                     line_item = QTableWidgetItem(str(violation.get("line_number", "")))
@@ -813,9 +853,29 @@ class MainWindow(QMainWindow):
         
         # 获取不同严重性级别的违规数量
         violations_by_severity = results.get('violations_by_severity', {})
-        high_violations = violations_by_severity.get('high', 0)
-        medium_violations = violations_by_severity.get('medium', 0)
-        low_violations = violations_by_severity.get('low', 0)
+        
+        # 过滤掉包含特殊文本的违规项
+        # 从violations字典中提取真实违规数量
+        filtered_high_violations = 0
+        filtered_medium_violations = 0
+        filtered_low_violations = 0
+        
+        if results.get('violations'):
+            for violation_type, count in results['violations'].items():
+                # 跳过特殊消息类型
+                if not ("done processing" in violation_type.lower() or "total errors found" in violation_type.lower()):
+                    # 根据违规类型的严重性分类统计
+                    if 'high' in violation_type.lower():
+                        filtered_high_violations += count
+                    elif 'medium' in violation_type.lower():
+                        filtered_medium_violations += count
+                    else:
+                        filtered_low_violations += count
+        
+        # 使用过滤后的数据，如果没有过滤数据则使用原始数据
+        high_violations = filtered_high_violations if filtered_high_violations > 0 else violations_by_severity.get('high', 0)
+        medium_violations = filtered_medium_violations if filtered_medium_violations > 0 else violations_by_severity.get('medium', 0)
+        low_violations = filtered_low_violations if filtered_low_violations > 0 else violations_by_severity.get('low', 0)
         
         # 计算各严重级别的不规范代码行占比
         if estimated_lines > 0:
