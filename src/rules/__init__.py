@@ -299,31 +299,37 @@ class RuleManager:
                     }
                 }
             
-            # 检查并处理每个语言的规则
-            enhanced_ruleset = {}
-            for lang, rules in ruleset.items():
-                if not rules or not isinstance(rules, dict):
-                    logging.warning(f"语言 '{lang}' 的规则为空或格式错误，添加基本规则")
-                    # 添加基本规则
-                    if lang == 'python':
-                        enhanced_ruleset[lang] = {
-                            'variable_naming': '^[a-z_][a-z0-9_]*$',
-                            'function_naming': '^[a-z_][a-z0-9_]*$',
-                            'class_naming': '^[A-Z][a-zA-Z0-9]*$',
-                            'max_line_length': 100,
-                            'expected_indent': 4
-                        }
-                    elif lang == 'javascript':
-                        enhanced_ruleset[lang] = {
-                            'variable_naming': '^[a-z][a-zA-Z0-9]*$',
-                            'function_naming': '^[a-z][a-zA-Z0-9]*$',
-                            'max_line_length': 100,
-                            'expected_indent': 2
-                        }
-                    else:
-                        enhanced_ruleset[lang] = {}
-                else:
-                    enhanced_ruleset[lang] = rules
+            # 定义有效的语言名称列表
+            valid_languages = ['python', 'javascript', 'cpp', 'php', 'go', 'java']
+            
+            # 复制规则集，正确区分语言规则和全局规则
+            enhanced_ruleset = ruleset.copy()
+            
+            # 只对有效的语言名称进行规则验证
+            for lang in valid_languages:
+                if lang in enhanced_ruleset:
+                    rules = enhanced_ruleset[lang]
+                    # 验证语言规则是否为空或格式错误
+                    if not rules or not isinstance(rules, dict):
+                        logging.warning(f"语言 '{lang}' 的规则为空或格式错误，添加基本规则")
+                        # 添加基本规则
+                        if lang == 'python':
+                            enhanced_ruleset[lang] = {
+                                'variable_naming': '^[a-z_][a-z0-9_]*$',
+                                'function_naming': '^[a-z_][a-z0-9_]*$',
+                                'class_naming': '^[A-Z][a-zA-Z0-9]*$',
+                                'max_line_length': 100,
+                                'expected_indent': 4
+                            }
+                        elif lang == 'javascript':
+                            enhanced_ruleset[lang] = {
+                                'variable_naming': '^[a-z][a-zA-Z0-9]*$',
+                                'function_naming': '^[a-z][a-zA-Z0-9]*$',
+                                'max_line_length': 100,
+                                'expected_indent': 2
+                            }
+                        else:
+                            enhanced_ruleset[lang] = {}
             
             return enhanced_ruleset
             

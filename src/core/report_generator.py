@@ -2,15 +2,20 @@
 # -*- coding: utf-8 -*-
 
 import os
+import sys
 import json
 import csv
 import datetime
 import pdfkit
+from .config_manager import ConfigManager
 
 class ReportGenerator:
-    def __init__(self, results):
+    def __init__(self, results, ruleset=None):
         self.results = results
         self.timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        self.config_manager = ConfigManager()
+        # 如果提供了ruleset参数，使用它；否则从配置管理器获取默认值
+        self.ruleset = ruleset or self.config_manager.get_default_ruleset()
         
         # 确保报告目录存在
         self.reports_dir = os.path.join(os.path.expanduser('~'), 'CodeAuditReports')
@@ -41,7 +46,12 @@ class ReportGenerator:
             elif format.lower() == 'html':
                 return self._generate_html_report(file_path, include_summary, include_details)
             elif format.lower() == 'pdf':
-                return self._generate_pdf_report(file_path, include_summary, include_details)
+                # 直接生成PDF格式报告，不再创建HTML备份
+                try:
+                    return self._generate_pdf_report(file_path, include_summary, include_details)
+                except Exception as pdf_error:
+                    # 如果PDF生成失败，直接抛出异常
+                    raise Exception(f"PDF生成失败: {str(pdf_error)}")
             else:
                 return self._generate_text_report(file_path, include_summary, include_details)
         except Exception as e:
@@ -294,8 +304,15 @@ class ReportGenerator:
                 wkhtmltopdf_path = None
                 possible_paths = []
                 
+                # 首先添加应用程序目录路径，这对于打包的应用很重要
+                app_dir = os.path.dirname(os.path.abspath(sys.executable))
                 if system == 'Windows':
                     possible_paths = [
+                        # 应用程序目录中的wkhtmltopdf
+                        os.path.join(app_dir, 'wkhtmltopdf.exe'),
+                        # 应用程序目录的bin子目录
+                        os.path.join(app_dir, 'bin', 'wkhtmltopdf.exe'),
+                        # 标准安装位置
                         r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe',
                         r'C:\Program Files (x86)\wkhtmltopdf\bin\wkhtmltopdf.exe'
                     ]
@@ -337,6 +354,7 @@ class ReportGenerator:
                             f.write("1. 下载Windows安装包\n")
                             f.write("2. 运行安装程序并选择将wkhtmltopdf添加到系统PATH\n")
                             f.write("3. 安装完成后重启电脑以确保PATH设置生效\n")
+                            f.write("4. 或者，您可以手动下载wkhtmltopdf.exe并将其放置在与CodeAuditX.exe相同的目录中\n")
                         elif system == 'Darwin':
                             f.write("macOS安装指南:\n")
                             f.write("1. 推荐使用Homebrew安装: brew install wkhtmltopdf\n")
@@ -383,7 +401,7 @@ class ReportGenerator:
         h1 {{ color: #333; }}
         .summary {{ background-color: #f0f0f0; padding: 15px; border-radius: 5px; margin-bottom: 20px; }}
         .section {{ margin-bottom: 30px; }}
-        table {{ border-collapse: collapse; width: 100%; table-layout: fixed; }}
+        table {{ border-collapse: collapse; width: 100%; table-layout: fixed; margin-bottom: 20px; }}
         th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; word-wrap: break-word; }}
         th {{ background-color: #4CAF50; color: white; }}
         tr:nth-child(even) {{ background-color: #f2f2f2; }}
@@ -403,9 +421,10 @@ class ReportGenerator:
     <h1>代码规范度扫描报告</h1>
     
     <div class="summary">
-        <p>生成时间: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
-        <p>规范度评分: <span class="score">{score:.1f}%</span></p>
-    </div>
+            <p>生成时间: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+            <p>扫描规范标准: {self.ruleset}</p>
+            <p>规范度评分: <span class="score">{score:.1f}%</span></p>
+        </div>
 """
         
         if include_summary:
@@ -422,12 +441,13 @@ class ReportGenerator:
             <tr><td>扫描时间</td><td>{self.results.get('scan_time', 0):.2f}秒</td></tr>
             <tr><td>规范度评分</td><td>{self._calculate_score():.1f}%</td></tr>
         </table>
+        
+        <!-- 添加按严重性统计的违规数据 -->
         <table>
-            <tr><th>统计项</th><th>数值</th></tr>
-            <tr><td>总文件数</td><td>{self.results.get('total_files', 0)}</td></tr>
-            <tr><td>已扫描文件</td><td>{self.results.get('scanned_files', 0)}</td></tr>
-            <tr><td>跳过文件</td><td>{self.results.get('skipped_files', 0)}</td></tr>
-            <tr><td>扫描时间</td><td>{self.results.get('scan_time', 0):.2f}秒</td></tr>
+            <tr><th>违规严重性</th><th>违规数量</th><th>占总行数比例</th></tr>
+            <tr class="high"><td>高风险违规</td><td>{self.results.get('violations_by_severity', {}).get('high', 0)}</td><td>{(self.results.get('violations_by_severity', {}).get('high', 0) / max(1, self.results.get('total_lines', 1))) * 100:.4f}%</td></tr>
+            <tr class="medium"><td>中风险违规</td><td>{self.results.get('violations_by_severity', {}).get('medium', 0)}</td><td>{(self.results.get('violations_by_severity', {}).get('medium', 0) / max(1, self.results.get('total_lines', 1))) * 100:.4f}%</td></tr>
+            <tr class="low"><td>低风险违规</td><td>{self.results.get('violations_by_severity', {}).get('low', 0)}</td><td>{(self.results.get('violations_by_severity', {}).get('low', 0) / max(1, self.results.get('total_lines', 1))) * 100:.4f}%</td></tr>
         </table>
     </div>
     
@@ -475,7 +495,7 @@ class ReportGenerator:
         if include_details and 'details' in self.results:
             html += f"""
     <div class="section">
-        <h2>详细违规信息</h2>
+        <h2>高风险违规信息</h2>
         <table class="violations-table">
             <tr><th>文件路径</th><th>规则名称</th><th>违规描述</th><th>行号</th><th>严重性</th></tr>
 """
@@ -532,63 +552,54 @@ class ReportGenerator:
         
         根据不规范代码行占总代码行的比例计算规范度评分：
         1. 计算每种严重级别的不规范代码行占比
-        2. 基于占比直接计算得分（占比越低，得分越高）
-        3. 根据严重级别设置不同权重，高严重度权重更高
+        2. 使用新公式：100 - 低违规代码占比×0.1 - 中违规代码占比×1 - 高违规代码占比×10
         """
-        scanned_files = self.results.get('scanned_files', 0)
-        if scanned_files == 0:
-            return 100.0
+        # 获取扫描结果中的总行数
+        total_lines = self.results.get('total_lines', 0)
+        if total_lines == 0:
+            # 如果没有收集到总行数，使用估算值
+            scanned_files = self.results.get('scanned_files', 0)
+            total_lines = scanned_files * 200
+            if total_lines == 0:
+                return 100.0
         
-        # 统计代码总行数（需要在扫描时收集这个信息）
-        # 这里我们可以通过扫描结果估算，或者使用一个更简单的方法
-        # 假设每个扫描的文件平均有200行代码（可根据实际情况调整）
-        estimated_lines = scanned_files * 200
+        # 使用扫描器提供的按严重性统计的违规数据
+        violations_by_severity = self.results.get('violations_by_severity', {})
+        high_violations = violations_by_severity.get('high', 0)
+        medium_violations = violations_by_severity.get('medium', 0)
+        low_violations = violations_by_severity.get('low', 0)
         
-        # 过滤掉特殊消息类型的违规
-        filtered_violations = self._filter_special_messages(self.results.get('violations', {}))
+        # 如果没有按严重性统计的数据，尝试从详细违规信息中计算
+        if high_violations == 0 and medium_violations == 0 and low_violations == 0:
+            details = self.results.get('details', {})
+            for file_path, violations in details.items():
+                for violation in violations:
+                    # 过滤特殊消息
+                    description = violation.get('description', '').lower()
+                    rule_name = violation.get('rule_name', '').lower()
+                    if 'done processing' in description or 'total errors found' in description or \
+                       'done processing' in rule_name or 'total errors found' in rule_name:
+                        continue
+                    
+                    severity = violation.get('severity', 'low').lower()
+                    if severity == 'high':
+                        high_violations += 1
+                    elif severity == 'medium':
+                        medium_violations += 1
+                    else:
+                        low_violations += 1
         
-        # 重新计算不同严重性级别的违规数量
-        high_violations = 0
-        medium_violations = 0
-        low_violations = 0
+        # 计算各严重级别的不规范代码行占比（转换为百分比）
+        high_ratio_percent = (high_violations / total_lines) * 100
+        medium_ratio_percent = (medium_violations / total_lines) * 100
+        low_ratio_percent = (low_violations / total_lines) * 100
         
-        for violation_type, count in filtered_violations.items():
-            if 'high' in violation_type.lower():
-                high_violations += count
-            elif 'medium' in violation_type.lower():
-                medium_violations += count
-            else:
-                low_violations += count
+        # 使用新的评分公式：100 - 低违规×0.1 - 中违规×1 - 高违规×10
+        # 高严重性违规影响最大，中严重性次之，低严重性影响最小
+        final_score = 100 - (low_ratio_percent * 0.1) - (medium_ratio_percent * 1) - (high_ratio_percent * 10)
         
-        # 计算各严重级别的不规范代码行占比
-        if estimated_lines > 0:
-            high_ratio = high_violations / estimated_lines
-            medium_ratio = medium_violations / estimated_lines
-            low_ratio = low_violations / estimated_lines
-        else:
-            high_ratio = 0
-            medium_ratio = 0
-            low_ratio = 0
-        
-        # 基于占比直接计算各严重级别的得分
-        # 使用自然指数函数让分数在低占比时变化更平缓，高占比时下降更快
-        high_score = max(0, 100 * (1 - high_ratio) ** 0.3)
-        medium_score = max(0, 100 * (1 - medium_ratio) ** 0.5)
-        low_score = max(0, 100 * (1 - low_ratio))
-        
-        # 各严重级别的权重（高严重性对最终分数影响更大）
-        weights = {
-            'high': 0.5,      # 高严重度权重
-            'medium': 0.3,    # 中严重度权重
-            'low': 0.2        # 低严重度权重
-        }
-        
-        # 计算加权平均得分
-        final_score = (
-            high_score * weights['high'] +
-            medium_score * weights['medium'] +
-            low_score * weights['low']
-        )
+        # 确保分数不低于0分
+        final_score = max(0, final_score)
         
         return final_score
     
@@ -602,10 +613,11 @@ class ReportGenerator:
 
 # 辅助函数：生成HTML格式的报告预览
 
-def generate_html_preview(results):
+def generate_html_preview(results, ruleset=None):
     """生成HTML格式的报告预览"""
-    generator = ReportGenerator(results)
+    generator = ReportGenerator(results, ruleset)
     score = generator._calculate_score()
+    ruleset = generator.ruleset
     
     html = f"""<!DOCTYPE html>
 <html lang="zh-CN">
@@ -630,6 +642,7 @@ def generate_html_preview(results):
     
     <div class="summary">
         <p>生成时间: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+        <p>扫描规范标准: {ruleset}</p>
         <p>规范度评分: <span class="score">{score:.1f}%</span></p>
         <p>扫描文件总数: {results.get('total_files', 0)}</p>
         <p>扫描时间: {results.get('scan_time', 0):.2f}秒</p>

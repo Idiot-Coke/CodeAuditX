@@ -63,10 +63,13 @@ class CodeScanner(QObject):
         
         # 获取规则管理器中的规则
         try:
+            # 加载完整规则集
             self.rules = rule_manager.get_rules_for_ruleset(ruleset)
             
-            # 记录加载的规则集
+            # 记录加载的规则集和它支持的语言
             self.log_updated.emit(f"已加载规则集: {ruleset}")
+            supported_languages = [lang for lang in self.rules.keys() if lang != 'global']
+            self.log_updated.emit(f"规则集支持的语言: {', '.join(supported_languages) if supported_languages else '无特定语言规则'}")
             
             # 验证规则是否成功加载
             if self.rules is None or not isinstance(self.rules, dict):
@@ -81,11 +84,10 @@ class CodeScanner(QObject):
             # 计算规则数量，处理不同类型的值
             rule_count = 0
             for rules in self.rules.values():
-                if isinstance(rules, dict) or isinstance(rules, list):
+                if isinstance(rules, dict):
                     rule_count += len(rules)
-                elif isinstance(rules, int):
-                    # 对于整数类型的值，我们不计算它的长度
-                    pass
+                elif isinstance(rules, list):
+                    rule_count += len(rules)
             
             self.log_updated.emit(f"共加载 {rule_count} 条规则")
         except Exception as e:
@@ -209,7 +211,73 @@ class CodeScanner(QObject):
         
         try:
             # 获取该语言的规则
-            language_rules = self.rules.get(language.lower(), {})
+            language_key = language.lower()
+            
+            # 优先使用规则管理器提供的语言特定规则
+            language_rules = rule_manager.get_rules_for_language(self.ruleset, language_key)
+            
+            # 如果规则管理器没有返回规则，尝试从我们加载的规则集中获取
+            if not language_rules:
+                language_rules = self.rules.get(language_key, {})
+                
+            # 为所有语言提供智能回退机制
+            if not language_rules:
+                # 特殊处理：C语言回退到C++规则
+                if language_key == 'c':
+                    language_rules = rule_manager.get_rules_for_language(self.ruleset, 'cpp') or self.rules.get('cpp', {})
+                    if language_rules:
+                        logger.debug(f"未找到C语言专用规则，使用C++规则作为回退")
+                # 特殊处理：TypeScript回退到JavaScript规则
+                elif language_key == 'typescript':
+                    language_rules = rule_manager.get_rules_for_language(self.ruleset, 'javascript') or self.rules.get('javascript', {})
+                    if language_rules:
+                        logger.debug(f"未找到TypeScript专用规则，使用JavaScript规则作为回退")
+                # 为所有其他语言提供默认规则
+                else:
+                    # 尝试使用其他可能相关的规则集
+                    fallback_mapping = {
+                        'php': ['php', 'javascript'],
+                        'go': ['go', 'cpp'],
+                        'java': ['java', 'cpp']
+                    }
+                    
+                    # 检查是否有特定的回退映射
+                    if language_key in fallback_mapping:
+                        for fallback_lang in fallback_mapping[language_key]:
+                            language_rules = rule_manager.get_rules_for_language(self.ruleset, fallback_lang) or self.rules.get(fallback_lang, {})
+                            if language_rules:
+                                logger.debug(f"未找到{language}语言专用规则，使用{fallback_lang}规则作为回退")
+                                break
+                    
+                    # 如果没有找到相关规则，创建基于所选规则集的默认规则
+                    if not language_rules:
+                        # 根据规则集特点设置默认规则
+                        if self.ruleset == 'PEP8':
+                            # PEP8规则集默认值
+                            default_indent = 4
+                            default_line_length = 79
+                        elif self.ruleset in ['Airbnb', 'Standard']:
+                            # JavaScript相关规则集默认值
+                            default_indent = 2
+                            default_line_length = 100
+                        elif self.ruleset == 'Google':
+                            # Google规则集默认值
+                            default_indent = 4
+                            default_line_length = 80
+                        else:
+                            # 通用默认值
+                            default_indent = 4
+                            default_line_length = 100
+                        
+                        # 根据语言调整缩进
+                        if language_key in ['javascript', 'typescript']:
+                            default_indent = 2
+                        
+                        language_rules = {
+                            'max_line_length': default_line_length,
+                            'expected_indent': default_indent
+                        }
+                        logger.debug(f"为{language}语言创建了基于{self.ruleset}规则集的默认规则")
             
             # 获取对应的解析器
             parser = get_parser_for_file(file_path, self.ruleset)

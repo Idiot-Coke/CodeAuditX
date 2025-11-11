@@ -21,7 +21,7 @@ from src.core.config_manager import ConfigManager
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("代码规范检查工具")
+        self.setWindowTitle("代码规范扫描工具")
         self.setGeometry(100, 100, 1200, 800)
         
         # 设置字体
@@ -88,7 +88,7 @@ class MainWindow(QMainWindow):
         # 规范标准选择
         standard_label = QLabel("规范标准：")
         self.standard_combo = QComboBox()
-        self.standard_combo.addItems(["PEP 8", "Google Python Style Guide", "自定义"])
+        self.standard_combo.addItems(["PEP 8", "Google", "Airbnb", "Standard", "自定义"])
         self.standard_combo.setCurrentText(self.config_manager.get("scanner.standard", "PEP 8"))
         
         # 排除目录输入
@@ -305,8 +305,17 @@ class MainWindow(QMainWindow):
         # 获取排除目录
         exclude_dirs = [d.strip() for d in self.exclude_input.toPlainText().split(",") if d.strip()]
         
-        # 获取规范标准
-        standard = self.standard_combo.currentText()
+        # 获取规范标准并映射到实际规则集名称
+        standard_display = self.standard_combo.currentText()
+        # 映射UI显示名称到规则集实际名称
+        standard_mapping = {
+            "PEP 8": "PEP8",
+            "Google": "Google",
+            "Airbnb": "Airbnb",
+            "Standard": "Standard",
+            "自定义": "Google"  # 自定义模式默认使用Google规则集作为基础
+        }
+        standard = standard_mapping.get(standard_display, standard_display)
         
         # 保存配置
         self.config_manager.set("scanner.project_path", project_path)
@@ -468,6 +477,39 @@ class MainWindow(QMainWindow):
                 if not ("done processing" in violation_type.lower() or "total errors found" in violation_type.lower()):
                     filtered_violations[violation_type] = count
         
+        # 使用扫描器提供的按严重性统计的违规数据
+        violations_by_severity = results.get('violations_by_severity', {})
+        high_severity_count = violations_by_severity.get('high', 0)
+        medium_severity_count = violations_by_severity.get('medium', 0)
+        low_severity_count = violations_by_severity.get('low', 0)
+        
+        # 如果没有按严重性统计的数据，尝试从详细违规信息中计算
+        if high_severity_count == 0 and medium_severity_count == 0 and low_severity_count == 0:
+            details = results.get('details', {})
+            for file_path, violations in details.items():
+                for violation in violations:
+                    # 过滤特殊消息
+                    description = violation.get('description', '').lower()
+                    rule_name = violation.get('rule_name', '').lower()
+                    if 'done processing' in description or 'total errors found' in description or \
+                       'done processing' in rule_name or 'total errors found' in rule_name:
+                        continue
+                    
+                    severity = violation.get('severity', 'low').lower()
+                    if severity == 'high':
+                        high_severity_count += 1
+                    elif severity == 'medium':
+                        medium_severity_count += 1
+                    else:
+                        low_severity_count += 1
+        
+        # 更新结果中的违规严重性数据，确保一致性
+        violations_by_severity = {
+            'high': high_severity_count,
+            'medium': medium_severity_count,
+            'low': low_severity_count
+        }
+        
         # 基本统计信息
         stats_data = [
             ("扫描文件总数", results['scanned_files']),
@@ -489,16 +531,12 @@ class MainWindow(QMainWindow):
             violation_ratio = (total_violations / total_lines) * 100
             stats_data.append(("违规占比", f"{violation_ratio:.2f}%"))
         
-        # 如果有按严重性统计的数据
-        if results.get('violations_by_severity'):
-            high_severity_count = results['violations_by_severity'].get('high', 0)
-            medium_severity_count = results['violations_by_severity'].get('medium', 0)
-            low_severity_count = results['violations_by_severity'].get('low', 0)
-            stats_data.extend([
-                ("高严重性违规", high_severity_count),
-                ("中严重性违规", medium_severity_count),
-                ("低严重性违规", low_severity_count)
-            ])
+        # 添加高中低违规数据到统计信息
+        stats_data.extend([
+            ("高严重性违规", high_severity_count),
+            ("中严重性违规", medium_severity_count),
+            ("低严重性违规", low_severity_count)
+        ])
         
         for row, (name, value) in enumerate(stats_data):
             self.stats_table.insertRow(row)
@@ -528,18 +566,26 @@ class MainWindow(QMainWindow):
                     self.violations_by_file_table.setItem(row, 1, QTableWidgetItem(file_path))
                     self.violations_by_file_table.setItem(row, 2, QTableWidgetItem(str(count)))
         
-        # 违规统计（按严重性）
-        if results.get('violations_by_severity'):
-            severity_map = {
-                'high': '高严重性',
-                'medium': '中严重性',
-                'low': '低严重性'
-            }
-            for row, (severity, count) in enumerate(results['violations_by_severity'].items()):
+        # 违规统计（按严重性）- 使用我们计算的准确数据
+        severity_map = {
+            'high': '高严重性',
+            'medium': '中严重性',
+            'low': '低严重性'
+        }
+        
+        # 添加高中低严重性数据到表格
+        for row, (severity, count) in enumerate([('high', high_severity_count), ('medium', medium_severity_count), ('low', low_severity_count)]):
+            if count > 0:  # 只显示有违规的严重性级别
                 self.violations_by_severity_table.insertRow(row)
                 severity_display = severity_map.get(severity, severity)
                 self.violations_by_severity_table.setItem(row, 0, QTableWidgetItem(severity_display))
                 self.violations_by_severity_table.setItem(row, 1, QTableWidgetItem(str(count)))
+        
+        # 如果没有任何违规，添加一个空行显示无违规
+        if high_severity_count == 0 and medium_severity_count == 0 and low_severity_count == 0:
+            self.violations_by_severity_table.insertRow(0)
+            self.violations_by_severity_table.setItem(0, 0, QTableWidgetItem('无违规'))
+            self.violations_by_severity_table.setItem(0, 1, QTableWidgetItem('0'))
         
         # 切换到统计结果标签页
         self.tabs.setCurrentIndex(1)
@@ -721,8 +767,9 @@ class MainWindow(QMainWindow):
                     if not file_path.lower().endswith('.pdf'):
                         file_path += '.pdf'
                     
-                    # 创建报告生成器
-                    report_generator = ReportGenerator(self.last_scan_results)
+                    # 创建报告生成器，传递用户选择的规范标准
+                    ruleset = self.standard_combo.currentText()
+                    report_generator = ReportGenerator(self.last_scan_results, ruleset)
                     
                     # 生成报告
                     try:
@@ -795,6 +842,9 @@ class MainWindow(QMainWindow):
                 _, file_ext = os.path.splitext(file_path)
                 file_ext = file_ext.lower()
                 
+                # 获取用户选择的规范标准
+                ruleset = self.standard_combo.currentText()
+                
                 # 映射文件扩展名到报告格式
                 format_map = {
                     '.txt': 'txt',
@@ -810,8 +860,8 @@ class MainWindow(QMainWindow):
                 if not os.path.exists(report_dir):
                     os.makedirs(report_dir)
                 
-                # 创建报告生成器
-                report_generator = ReportGenerator(self.last_scan_results)
+                # 创建报告生成器，传递用户选择的规范标准
+                report_generator = ReportGenerator(self.last_scan_results, ruleset)
                 
                 # 生成报告
                 try:
@@ -845,72 +895,54 @@ class MainWindow(QMainWindow):
         
         根据不规范代码行占总代码行的比例计算规范度评分：
         1. 计算每种严重级别的不规范代码行占比
-        2. 基于占比直接计算得分（占比越低，得分越高）
-        3. 根据严重级别设置不同权重，高严重度权重更高
+        2. 使用新公式：100 - 低违规代码占比×0.1 - 中违规代码占比×1 - 高违规代码占比×10
         """
-        if results['scanned_files'] == 0:
-            return 100.0
+        # 获取扫描结果中的总行数
+        total_lines = results.get('total_lines', 0)
+        if total_lines == 0:
+            # 如果没有收集到总行数，使用估算值
+            scanned_files = results.get('scanned_files', 0)
+            total_lines = scanned_files * 200
+            if total_lines == 0:
+                return 100.0
         
-        # 统计代码总行数（需要在扫描时收集这个信息）
-        # 这里我们可以通过扫描结果估算，或者使用一个更简单的方法
-        # 假设每个扫描的文件平均有200行代码（可根据实际情况调整）
-        estimated_lines = results['scanned_files'] * 200
-        
-        # 获取不同严重性级别的违规数量
+        # 使用扫描器提供的按严重性统计的违规数据
         violations_by_severity = results.get('violations_by_severity', {})
+        high_violations = violations_by_severity.get('high', 0)
+        medium_violations = violations_by_severity.get('medium', 0)
+        low_violations = violations_by_severity.get('low', 0)
         
-        # 过滤掉包含特殊文本的违规项
-        # 从violations字典中提取真实违规数量
-        filtered_high_violations = 0
-        filtered_medium_violations = 0
-        filtered_low_violations = 0
-        
-        if results.get('violations'):
-            for violation_type, count in results['violations'].items():
-                # 跳过特殊消息类型
-                if not ("done processing" in violation_type.lower() or "total errors found" in violation_type.lower()):
-                    # 根据违规类型的严重性分类统计
-                    if 'high' in violation_type.lower():
-                        filtered_high_violations += count
-                    elif 'medium' in violation_type.lower():
-                        filtered_medium_violations += count
+        # 如果没有按严重性统计的数据，尝试从详细违规信息中计算
+        if high_violations == 0 and medium_violations == 0 and low_violations == 0:
+            details = results.get('details', {})
+            for file_path, violations in details.items():
+                for violation in violations:
+                    # 过滤特殊消息
+                    description = violation.get('description', '').lower()
+                    rule_name = violation.get('rule_name', '').lower()
+                    if 'done processing' in description or 'total errors found' in description or \
+                       'done processing' in rule_name or 'total errors found' in rule_name:
+                        continue
+                    
+                    severity = violation.get('severity', 'low').lower()
+                    if severity == 'high':
+                        high_violations += 1
+                    elif severity == 'medium':
+                        medium_violations += 1
                     else:
-                        filtered_low_violations += count
+                        low_violations += 1
         
-        # 使用过滤后的数据，如果没有过滤数据则使用原始数据
-        high_violations = filtered_high_violations if filtered_high_violations > 0 else violations_by_severity.get('high', 0)
-        medium_violations = filtered_medium_violations if filtered_medium_violations > 0 else violations_by_severity.get('medium', 0)
-        low_violations = filtered_low_violations if filtered_low_violations > 0 else violations_by_severity.get('low', 0)
+        # 计算各严重级别的不规范代码行占比（转换为百分比）
+        high_ratio_percent = (high_violations / total_lines) * 100
+        medium_ratio_percent = (medium_violations / total_lines) * 100
+        low_ratio_percent = (low_violations / total_lines) * 100
         
-        # 计算各严重级别的不规范代码行占比
-        if estimated_lines > 0:
-            high_ratio = high_violations / estimated_lines
-            medium_ratio = medium_violations / estimated_lines
-            low_ratio = low_violations / estimated_lines
-        else:
-            high_ratio = 0
-            medium_ratio = 0
-            low_ratio = 0
+        # 使用新的评分公式：100 - 低违规×0.1 - 中违规×1 - 高违规×10
+        # 高严重性违规影响最大，中严重性次之，低严重性影响最小
+        final_score = 100 - (low_ratio_percent * 0.1) - (medium_ratio_percent * 1) - (high_ratio_percent * 10)
         
-        # 基于占比直接计算各严重级别的得分
-        # 使用自然指数函数让分数在低占比时变化更平缓，高占比时下降更快
-        high_score = max(0, 100 * (1 - high_ratio) ** 0.3)
-        medium_score = max(0, 100 * (1 - medium_ratio) ** 0.5)
-        low_score = max(0, 100 * (1 - low_ratio))
-        
-        # 各严重级别的权重（高严重性对最终分数影响更大）
-        weights = {
-            'high': 0.5,      # 高严重度权重
-            'medium': 0.3,    # 中严重度权重
-            'low': 0.2        # 低严重度权重
-        }
-        
-        # 计算加权平均得分
-        final_score = (
-            high_score * weights['high'] +
-            medium_score * weights['medium'] +
-            low_score * weights['low']
-        )
+        # 确保分数不低于0分
+        final_score = max(0, final_score)
         
         return final_score
     
@@ -937,5 +969,5 @@ class MainWindow(QMainWindow):
         QMessageBox.about(
             self,
             "关于",
-            "代码规范审计工具\n版本: 1.0.0\n\n用于扫描代码中的规范问题并生成报告。"
+            "代码规范扫描工具\n版本: 1.0.0\n\n用于扫描代码中的规范问题并生成报告。\n\n软件著作权声明：\n本软件由张可开发，保留所有权利。\n未经授权，不得复制、修改或分发本软件。"
         )

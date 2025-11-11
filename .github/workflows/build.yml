@@ -49,6 +49,19 @@ jobs:
       - name: Install wkhtmltopdf (Windows)
         if: runner.os == 'Windows'
         run: choco install wkhtmltopdf --version=0.12.6 -y
+        
+      - name: Find and copy wkhtmltopdf (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          echo "Looking for wkhtmltopdf.exe..."
+          # 查找wkhtmltopdf.exe的位置
+          $wkhtmlPath = (Get-Command wkhtmltopdf).Source
+          echo "Found wkhtmltopdf at: $wkhtmlPath"
+          # 创建bin目录用于存放依赖文件
+          mkdir -p bin
+          # 复制wkhtmltopdf.exe到bin目录
+          Copy-Item -Path $wkhtmlPath -Destination "bin\wkhtmltopdf.exe"
+          echo "Copied wkhtmltopdf.exe to bin directory"
 
       - name: Build executable
         shell: python
@@ -72,6 +85,15 @@ jobs:
           # 添加配置目录
           if pathlib.Path("config").exists():
               extras.extend(["--add-data", "config:config"])
+          
+          # 对于Windows，添加wkhtmltopdf.exe
+          import platform
+          if platform.system() == 'Windows':
+              if pathlib.Path("bin/wkhtmltopdf.exe").exists():
+                  extras.extend(["--add-data", "bin/wkhtmltopdf.exe:wkhtmltopdf.exe"])
+                  extras.extend(["--add-data", "bin/wkhtmltopdf.exe:bin/wkhtmltopdf.exe"])  # 同时添加到bin子目录
+              else:
+                  print("Warning: wkhtmltopdf.exe not found in bin directory")
           # 构建命令
           cmd = [
               sys.executable, "-m", "PyInstaller",
@@ -94,12 +116,20 @@ jobs:
           # 添加macOS特定选项以解决bundle问题
           import platform
           if platform.system() == 'Darwin':
-              cmd.extend([
-                  "--osx-bundle-identifier", "com.codeauditx.app",
-                  "--add-binary", "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation:.",
-                  "--add-binary", "/System/Library/Frameworks/AppKit.framework/AppKit:.",
-                  "--add-data", ":."  # 添加当前目录所有内容
-              ])
+              # 添加bundle标识符
+              cmd.extend(["--osx-bundle-identifier", "com.codeauditx.app"])
+              # 添加必要的应用程序图标（即使没有图标文件，这也有助于创建正确的bundle结构）
+              cmd.extend(["--icon", "dummy.icns"])
+              # 确保包含PyObjC模块，这对处理macOS特定功能和避免NSImage断言失败至关重要
+              cmd.extend(["--collect-all", "Foundation"])
+              cmd.extend(["--collect-all", "AppKit"])
+              cmd.extend(["--collect-all", "CoreFoundation"])
+              cmd.extend(["--collect-all", "objc"])
+              # 添加额外的隐藏导入以确保所有依赖正确包含
+              cmd.extend(["--hidden-import", "PyQt5.QtPrintSupport"])
+              cmd.extend(["--hidden-import", "PyQt5.QtSvg"])
+              # 添加环境变量设置，确保在打包应用中正确设置
+              # 注意：我们不使用特定的PYTHONPATH，而是让PyInstaller自动处理依赖关系
               
           cmd.extend(extras + [entry])
           print("Running:", " ".join(cmd))
