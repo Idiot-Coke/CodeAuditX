@@ -726,16 +726,6 @@ class MainWindow(QMainWindow):
                     
                     # 生成报告
                     try:
-                        # 检查wkhtmltopdf是否安装
-                        try:
-                            import pdfkit
-                            pdfkit.configuration()
-                        except OSError:
-                            error_msg = "PDF报告生成需要安装wkhtmltopdf\n\n请访问 https://wkhtmltopdf.org/downloads.html 下载并安装适合您系统的版本\n安装后，重启应用程序即可生成PDF报告"
-                            self.update_log(error_msg)
-                            QMessageBox.warning(self, "依赖缺失", error_msg)
-                            return
-                        
                         # 记录尝试导出的信息
                         self.update_log(f"尝试导出PDF格式报告到：{file_path}")
                         
@@ -746,6 +736,21 @@ class MainWindow(QMainWindow):
                             include_summary=self.config_manager.get("report.include_summary", True),
                             include_details=self.config_manager.get("report.include_details", True)
                         )
+                        
+                        # 检查生成的文件是否为提示文件而非真正的PDF
+                        try:
+                            with open(report_path, 'r', encoding='utf-8') as f:
+                                content = f.read(100)  # 读取文件开头
+                                if "wkhtmltopdf" in content and len(content) < 1000:
+                                    # 这是一个提示文件，不是真正的PDF
+                                    self.update_log(f"PDF生成需要安装wkhtmltopdf，已创建说明文件")
+                                    QMessageBox.information(self, "依赖缺失", 
+                                                           f"已创建说明文件：{report_path}\n\n" +
+                                                           "PDF报告生成需要安装wkhtmltopdf。说明文件中包含详细的安装指南。")
+                                    return
+                        except Exception:
+                            # 如果无法以文本方式打开，可能是真正的PDF文件
+                            pass
                         
                         # 显示成功消息
                         self.update_log(f"报告已成功导出到：{report_path}")

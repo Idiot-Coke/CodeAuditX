@@ -268,6 +268,11 @@ class ReportGenerator:
             
             # 尝试使用pdfkit将HTML转换为PDF
             try:
+                # 针对不同平台设置不同的配置
+                import platform
+                system = platform.system()
+                architecture = platform.machine()
+                
                 # 设置pdfkit选项
                 options = {
                     'page-size': 'A4',
@@ -280,16 +285,67 @@ class ReportGenerator:
                     'enable-local-file-access': True
                 }
                 
+                # 为macOS添加特定选项以增强兼容性
+                if system == 'Darwin':
+                    options['disable-smart-shrinking'] = True
+                    options['no-background'] = None
+                    
+                # 配置路径查找，尝试多个常见位置
+                wkhtmltopdf_path = None
+                possible_paths = []
+                
+                if system == 'Windows':
+                    possible_paths = [
+                        r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe',
+                        r'C:\Program Files (x86)\wkhtmltopdf\bin\wkhtmltopdf.exe'
+                    ]
+                elif system == 'Darwin':
+                    possible_paths = [
+                        '/usr/local/bin/wkhtmltopdf',
+                        '/opt/homebrew/bin/wkhtmltopdf',
+                        '/usr/bin/wkhtmltopdf'
+                    ]
+                elif system == 'Linux':
+                    possible_paths = [
+                        '/usr/bin/wkhtmltopdf',
+                        '/usr/local/bin/wkhtmltopdf'
+                    ]
+                
+                # 尝试找到wkhtmltopdf可执行文件
+                for path in possible_paths:
+                    if os.path.exists(path):
+                        wkhtmltopdf_path = path
+                        break
+                
+                # 使用找到的路径或默认配置
+                config = pdfkit.configuration(wkhtmltopdf=wkhtmltopdf_path) if wkhtmltopdf_path else None
+                
                 # 生成PDF
-                pdfkit.from_string(html_content, file_path, options=options)
+                pdfkit.from_string(html_content, file_path, options=options, configuration=config)
             except OSError as e:
                 # 处理wkhtmltopdf未安装的情况
-                if "No wkhtmltopdf executable found" in str(e):
+                if "No wkhtmltopdf executable found" in str(e) or "not found" in str(e).lower():
                     # 创建一个简单的文本文件提示用户安装wkhtmltopdf
                     with open(file_path, 'w', encoding='utf-8') as f:
                         f.write("PDF报告生成需要安装wkhtmltopdf\n\n")
                         f.write("请访问 https://wkhtmltopdf.org/downloads.html 下载并安装适合您系统的版本\n")
-                        f.write("安装后，重启应用程序即可生成PDF报告")
+                        f.write("安装后，重启应用程序即可生成PDF报告\n\n")
+                        
+                        # 添加针对不同平台的具体安装指南
+                        if system == 'Windows':
+                            f.write("Windows安装指南:\n")
+                            f.write("1. 下载Windows安装包\n")
+                            f.write("2. 运行安装程序并选择将wkhtmltopdf添加到系统PATH\n")
+                            f.write("3. 安装完成后重启电脑以确保PATH设置生效\n")
+                        elif system == 'Darwin':
+                            f.write("macOS安装指南:\n")
+                            f.write("1. 推荐使用Homebrew安装: brew install wkhtmltopdf\n")
+                            f.write("2. 或下载macOS安装包并安装\n")
+                            f.write("3. 对于Apple Silicon (M1/M2/M3)芯片，请确保安装兼容版本\n")
+                        elif system == 'Linux':
+                            f.write("Linux安装指南:\n")
+                            f.write("Ubuntu/Debian: sudo apt-get install wkhtmltopdf\n")
+                            f.write("CentOS/RHEL: sudo yum install wkhtmltopdf\n")
                 else:
                     raise Exception(f"生成PDF报告失败: {str(e)}")
             

@@ -89,7 +89,19 @@ jobs:
               "--hidden-import", "src.parsers.php_parser",
               "--hidden-import", "src.parsers.go_parser",
               "--hidden-import", "src.parsers.java_parser"
-          ] + extras + [entry]
+          ]
+          
+          # 添加macOS特定选项以解决bundle问题
+          import platform
+          if platform.system() == 'Darwin':
+              cmd.extend([
+                  "--osx-bundle-identifier", "com.codeauditx.app",
+                  "--add-binary", "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation:.",
+                  "--add-binary", "/System/Library/Frameworks/AppKit.framework/AppKit:.",
+                  "--add-data", ":."  # 添加当前目录所有内容
+              ])
+              
+          cmd.extend(extras + [entry])
           print("Running:", " ".join(cmd))
           subprocess.run(cmd, check=True)
       - name: Debug output
