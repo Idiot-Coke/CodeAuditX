@@ -118,8 +118,7 @@ jobs:
           if platform.system() == 'Darwin':
               # 添加bundle标识符
               cmd.extend(["--osx-bundle-identifier", "com.codeauditx.app"])
-              # 添加必要的应用程序图标（即使没有图标文件，这也有助于创建正确的bundle结构）
-              cmd.extend(["--icon", "dummy.icns"])
+              # 不使用图标参数，因为我们没有实际的图标文件
               # 确保包含PyObjC模块，这对处理macOS特定功能和避免NSImage断言失败至关重要
               cmd.extend(["--collect-all", "Foundation"])
               cmd.extend(["--collect-all", "AppKit"])
