@@ -40,18 +40,20 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller pdfkit
 
-      # ---- 安装 wkhtmltopdf (Linux / 银河麒麟) ----
       - name: Install wkhtmltopdf (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y xfonts-75dpi xfonts-base
-          wget https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6-1/wkhtmltox_0.12.6-1.bionic_amd64.deb
-          sudo apt install -y ./wkhtmltox_0.12.6-1.bionic_amd64.deb
-          which wkhtmltopdf
+          wget https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6-1/wkhtmltox_0.12.6-1.jammy_amd64.deb
+          sudo apt install -y ./wkhtmltox_0.12.6-1.jammy_amd64.deb || {
+            echo "Fallback: using static binary"
+            wget -O wkhtmltopdf https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6-1/wkhtmltopdf-linux-amd64
+            chmod +x wkhtmltopdf
+            sudo mv wkhtmltopdf /usr/local/bin/wkhtmltopdf
+          }
           wkhtmltopdf --version
 
-      # ---- 安装 wkhtmltopdf (macOS) ----
       - name: Install wkhtmltopdf (macOS)
         if: runner.os == 'macOS'
         run: |
@@ -61,7 +63,6 @@ jobs:
           which wkhtmltopdf
           wkhtmltopdf --version
 
-      # ---- 安装 wkhtmltopdf (Windows) ----
       - name: Install wkhtmltopdf (Windows)
         if: runner.os == 'Windows'
         run: |
@@ -71,7 +72,6 @@ jobs:
           mkdir -p bin
           Copy-Item -Path $wkhtmlPath -Destination "bin\wkhtmltopdf.exe"
 
-      # ---- 构建可执行文件 ----
       - name: Build executable
         shell: python
         run: |
@@ -102,3 +102,41 @@ jobs:
               "--name", "CodeAuditX",
               "--collect-submodules", "src.rules",
               "--collect-submodules", "src.parsers",
+              "--collect-all", "src.core",
+              "--hidden-import", "src.rules.rulesets",
+              "--hidden-import", "src.parsers.python_parser",
+              "--hidden-import", "src.parsers.javascript_parser",
+              "--hidden-import", "src.parsers.c_cpp_parser",
+              "--hidden-import", "src.parsers.php_parser",
+              "--hidden-import", "src.parsers.go_parser",
+              "--hidden-import", "src.parsers.java_parser"
+          ] + extras + [entry]
+
+          print("Running:", " ".join(cmd))
+          subprocess.run(cmd, check=True)
+
+      - name: Test PDF generation
+        shell: python
+        run: |
+          import pdfkit, os
+          print("Testing wkhtmltopdf availability...")
+          try:
+              pdfkit.from_string("<h1>CodeAuditX Test</h1><p>Success!</p>", "test_output.pdf")
+              print("wkhtmltopdf test passed, PDF generated successfully.")
+              print("File size:", os.path.getsize("test_output.pdf"), "bytes")
+          except Exception as e:
+              print("wkhtmltopdf test failed:", e)
+
+      - name: Debug output
+        run: |
+          echo "Artifacts for ${{ matrix.label }}"
+          ls -R dist || true
+          ls -l test_output.pdf || true
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: CodeAuditX-${{ matrix.label }}
+          path: |
+            dist/**
+            test_output.pdf
