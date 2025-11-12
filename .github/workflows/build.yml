@@ -40,20 +40,25 @@ jobs:
           pip install -r requirements.txt
           pip install pyinstaller pdfkit
 
+      ########################################
+      # Linux / 银河麒麟 wkhtmltopdf 安装修复
+      ########################################
       - name: Install wkhtmltopdf (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y xfonts-75dpi xfonts-base
-          wget https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6-1/wkhtmltox_0.12.6-1.jammy_amd64.deb
-          sudo apt install -y ./wkhtmltox_0.12.6-1.jammy_amd64.deb || {
-            echo "Fallback: using static binary"
-            wget -O wkhtmltopdf https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6-1/wkhtmltopdf-linux-amd64
-            chmod +x wkhtmltopdf
-            sudo mv wkhtmltopdf /usr/local/bin/wkhtmltopdf
-          }
+          sudo apt-get install -y xfonts-75dpi xfonts-base fontconfig libfreetype6 libjpeg-turbo8 libpng16-16 libx11-6 libxcb1 libxext6 libxrender1
+          echo "Downloading static wkhtmltopdf binary..."
+          wget -O wkhtmltopdf.tar.xz https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6-1/wkhtmltox-0.12.6-1.linux-generic-amd64.tar.xz
+          echo "Extracting..."
+          tar -xJf wkhtmltopdf.tar.xz
+          sudo cp wkhtmltox/bin/wkhtmltopdf /usr/local/bin/
+          sudo chmod +x /usr/local/bin/wkhtmltopdf
           wkhtmltopdf --version
 
+      ########################################
+      # macOS wkhtmltopdf 安装
+      ########################################
       - name: Install wkhtmltopdf (macOS)
         if: runner.os == 'macOS'
         run: |
@@ -63,6 +68,9 @@ jobs:
           which wkhtmltopdf
           wkhtmltopdf --version
 
+      ########################################
+      # Windows wkhtmltopdf 安装
+      ########################################
       - name: Install wkhtmltopdf (Windows)
         if: runner.os == 'Windows'
         run: |
@@ -72,6 +80,9 @@ jobs:
           mkdir -p bin
           Copy-Item -Path $wkhtmlPath -Destination "bin\wkhtmltopdf.exe"
 
+      ########################################
+      # 构建可执行文件
+      ########################################
       - name: Build executable
         shell: python
         run: |
@@ -80,17 +91,20 @@ jobs:
           entry = "src/main.py" if pathlib.Path("src/main.py").exists() else "main.py"
           extras = []
 
+          # 收集 src 下的资源
           for folder in ["core", "parsers", "rules", "ui"]:
               if pathlib.Path(f"src/{folder}").exists():
                   extras.extend(["--add-data", f"src/{folder}:{folder}"])
           if pathlib.Path("config").exists():
               extras.extend(["--add-data", "config:config"])
 
+          # Windows 打包 wkhtmltopdf
           if platform.system() == "Windows":
               if pathlib.Path("bin/wkhtmltopdf.exe").exists():
                   extras.extend(["--add-data", "bin/wkhtmltopdf.exe:wkhtmltopdf.exe"])
                   extras.extend(["--add-data", "bin/wkhtmltopdf.exe:bin/wkhtmltopdf.exe"])
 
+          # macOS 打包 wkhtmltopdf 二进制
           if platform.system() == "Darwin":
               mac_path = "/usr/local/bin/wkhtmltopdf"
               if pathlib.Path(mac_path).exists():
@@ -115,6 +129,9 @@ jobs:
           print("Running:", " ".join(cmd))
           subprocess.run(cmd, check=True)
 
+      ########################################
+      # 验证 PDF 功能是否正常
+      ########################################
       - name: Test PDF generation
         shell: python
         run: |
@@ -127,12 +144,18 @@ jobs:
           except Exception as e:
               print("wkhtmltopdf test failed:", e)
 
+      ########################################
+      # 输出打包结果
+      ########################################
       - name: Debug output
         run: |
           echo "Artifacts for ${{ matrix.label }}"
           ls -R dist || true
           ls -l test_output.pdf || true
 
+      ########################################
+      # 上传构建产物
+      ########################################
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
