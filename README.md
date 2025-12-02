@@ -347,7 +347,7 @@ CodeAuditX项目采用MIT许可证。详见LICENSE文件。
 如有问题或建议，请通过以下方式联系我们：
 
 - GitHub Issues：在项目仓库中创建issue
-- 电子邮件：[project_email@example.com]（请替换为实际邮箱）
+- 电子邮件：[Mr.Karl.Zhang@outlook.com](mailto:Mr.Karl.Zhang@outlook.com)
 
 ## 致谢
 

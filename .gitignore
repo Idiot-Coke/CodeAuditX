@@ -1,0 +1,63 @@
+# Python虚拟环境
+venv/
+env/
+envs/
+pyvenv.cfg
+
+# IDE和编辑器文件
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# 编译输出
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 测试输出
+.pytest_cache/
+coverage/
+*.cover
+
+# 打包文件
+*.egg-info/
+dist/
+build/
+*.whl
+
+# 日志文件
+*.log
+logs/
+
+# 环境变量文件
+.env
+.env.local
+.env.*.local
+
+# 临时文件
+*.tmp
+*.temp
+.cache/
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+
+# SSH文件
+980602zKk
+980602zKk.pub
+*.pub
+*.key
+id_rsa*
+id_dsa*
+id_ecdsa*
+id_ed25519*

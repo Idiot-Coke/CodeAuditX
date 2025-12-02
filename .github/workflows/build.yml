@@ -34,7 +34,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev shared-mime-info
+          sudo apt-get install -y libcairo2 libcairo2-dev libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev libpango1.0-dev libgdk-pixbuf2.0-dev shared-mime-info
 
       - name: Install system dependencies (macOS)
         if: startsWith(matrix.os, 'macos-')
@@ -132,8 +132,7 @@ jobs:
               cmd.extend(["--hidden-import", "PyQt5.QtSvg"])
               # Windows可能需要额外的字体支持
               cmd.extend(["--hidden-import", "weasyprint.fonts"])
-              # 添加Windows应用程序清单
-              cmd.extend(["--win-private-assemblies"])
+              # Windows不再需要win-private-assemblies参数（PyInstaller 6.0+已移除）
               
           cmd.extend(extras + [entry])
           print("Running:", " ".join(cmd))
