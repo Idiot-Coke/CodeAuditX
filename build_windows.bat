@@ -21,6 +21,14 @@ if %errorlevel% neq 0 (
 
 call :print_color %COLOR_INFO% "检测到Python已安装。"
 
+REM 提示安装GTK3运行时
+echo.
+call :print_color %COLOR_INFO% "重要提示：在Windows上运行此应用需要GTK3运行时环境！"
+call :print_color %COLOR_INFO% "请从以下地址下载并安装GTK3运行时："
+call :print_color %COLOR_INFO% "https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer/releases"
+call :print_color %COLOR_INFO% "推荐安装32位或64位版本，与您的系统架构匹配。"
+echo.
+
 :setup_venv
 REM 创建虚拟环境
 if not exist "%VENV_DIR%" (
@@ -78,7 +86,6 @@ goto build_complete
 REM 备用打包命令
 pyinstaller ^
     --noconfirm ^
-    --onefile ^
     --windowed ^
     --name "CodeAuditX" ^
     --collect-submodules src.rules ^
@@ -92,6 +99,18 @@ pyinstaller ^
     --hidden-import src.parsers.go_parser ^
     --hidden-import src.parsers.java_parser ^
     --hidden-import weasyprint ^
+    --hidden-import weasyprint.css ^
+    --hidden-import weasyprint.html ^
+    --hidden-import weasyprint.layout ^
+    --hidden-import weasyprint.pdf ^
+    --hidden-import gi ^
+    --hidden-import gi.repository ^
+    --hidden-import gi.repository.GObject ^
+    --hidden-import gi.repository.Gio ^
+    --hidden-import gi.repository.GLib ^
+    --hidden-import pydyf ^
+    --hidden-import cssselect2 ^
+    --hidden-import html5lib ^
     --add-data "src/core;core" ^
     --add-data "src/parsers;parsers" ^
     --add-data "src/rules;rules" ^
@@ -108,8 +127,10 @@ if %errorlevel% neq 0 (
 call :print_color %COLOR_SUCCESS% "打包完成！可执行文件位于 dist\CodeAuditX.exe"
 call :print_color %COLOR_INFO% "使用说明："
 call :print_color %COLOR_INFO% "1. 运行 dist\CodeAuditX.exe 启动应用"
-call :print_color %COLOR_INFO% "2. 项目已使用WeasyPrint生成PDF，无需安装额外的wkhtmltopdf"
-call :print_color %COLOR_INFO% "3. 确保系统已安装WeasyPrint所需的依赖项"
+call :print_color %COLOR_INFO% "2. 确保系统已安装GTK3运行时环境"
+call :print_color %COLOR_INFO% "3. 项目使用WeasyPrint 55.0版本生成PDF报告"
+call :print_color %COLOR_INFO% "4. 如果遇到gobject-2.0-0.dll加载失败，请确认GTK3运行时已正确安装"
+call :print_color %COLOR_INFO% "5. 如需在ARM架构的Linux上运行，可能需要特别安装WeasyPrint 55.0及相关依赖"
 
 exit /b 0
 

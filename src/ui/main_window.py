@@ -256,7 +256,10 @@ class MainWindow(QMainWindow):
         self.violations_by_severity_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Interactive)
         violations_severity_layout.addWidget(violations_by_severity_label)
         violations_severity_layout.addWidget(self.violations_by_severity_table)
+        # 确保标签页被正确添加
         self.tabs.addTab(violations_severity_widget, "严重性统计")
+        # 记录严重性统计标签页的索引，方便后续直接切换到该页面
+        self.severity_tab_index = self.tabs.count() - 1
         
         # 许可证扫描标签页
         license_widget = QWidget()
@@ -573,22 +576,43 @@ class MainWindow(QMainWindow):
             'low': '低严重性'
         }
         
-        # 添加高中低严重性数据到表格
-        for row, (severity, count) in enumerate([('high', high_severity_count), ('medium', medium_severity_count), ('low', low_severity_count)]):
-            if count > 0:  # 只显示有违规的严重性级别
-                self.violations_by_severity_table.insertRow(row)
-                severity_display = severity_map.get(severity, severity)
-                self.violations_by_severity_table.setItem(row, 0, QTableWidgetItem(severity_display))
-                self.violations_by_severity_table.setItem(row, 1, QTableWidgetItem(str(count)))
+        # 确保表格被清空
+        self.violations_by_severity_table.setRowCount(0)
         
-        # 如果没有任何违规，添加一个空行显示无违规
-        if high_severity_count == 0 and medium_severity_count == 0 and low_severity_count == 0:
-            self.violations_by_severity_table.insertRow(0)
-            self.violations_by_severity_table.setItem(0, 0, QTableWidgetItem('无违规'))
-            self.violations_by_severity_table.setItem(0, 1, QTableWidgetItem('0'))
+        # 添加高中低严重性数据到表格，无论是否有违规都显示所有级别，便于用户查看完整信息
+        severity_rows = [('high', high_severity_count), ('medium', medium_severity_count), ('low', low_severity_count)]
         
-        # 切换到统计结果标签页
-        self.tabs.setCurrentIndex(1)
+        for row_idx, (severity, count) in enumerate(severity_rows):
+            # 始终添加所有严重性级别的行
+            self.violations_by_severity_table.insertRow(row_idx)
+            severity_display = severity_map.get(severity, severity)
+            self.violations_by_severity_table.setItem(row_idx, 0, QTableWidgetItem(severity_display))
+            self.violations_by_severity_table.setItem(row_idx, 1, QTableWidgetItem(str(count)))
+            
+            # 根据严重性级别设置单元格颜色，提高可读性
+            severity_item = self.violations_by_severity_table.item(row_idx, 0)
+            count_item = self.violations_by_severity_table.item(row_idx, 1)
+            
+            if severity == 'high' and count > 0:
+                severity_item.setBackground(QColor(255, 200, 200))  # 浅红色
+                count_item.setBackground(QColor(255, 200, 200))
+            elif severity == 'medium' and count > 0:
+                severity_item.setBackground(QColor(255, 255, 200))  # 浅黄色
+                count_item.setBackground(QColor(255, 255, 200))
+            elif severity == 'low' and count > 0:
+                severity_item.setBackground(QColor(200, 255, 200))  # 浅绿色
+                count_item.setBackground(QColor(200, 255, 200))
+        
+        # 调整列宽以适应内容
+        self.violations_by_severity_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.violations_by_severity_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        
+        # 确保严重性统计标签页正确显示，优先切换到该页面
+        if hasattr(self, 'severity_tab_index'):
+            self.tabs.setCurrentIndex(self.severity_tab_index)
+        else:
+            # 如果没有严重性统计标签页索引，则切换到总体统计页面
+            self.tabs.setCurrentIndex(1)
     
     def _display_details(self, results):
         """显示详细结果"""

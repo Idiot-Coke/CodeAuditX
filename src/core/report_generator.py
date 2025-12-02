@@ -286,7 +286,7 @@ class ReportGenerator:
             # 使用WeasyPrint将HTML转换为PDF
             try:
                 from weasyprint import HTML, CSS
-                # 移除FontConfiguration导入，因为在新版WeasyPrint中不再需要
+                # 注意：不同版本的WeasyPrint可能有不同的初始化参数需求
                 
                 # 定义页面样式，确保与原设计一致
                 page_css = CSS(string='''
@@ -303,11 +303,11 @@ class ReportGenerator:
                     }
                 ''')
                 
-                # 生成PDF (新版WeasyPrint不再需要font_config参数)
-                HTML(string=html_content).write_pdf(
-                    file_path,
-                    stylesheets=[page_css]
-                )
+                # 生成PDF - 适配不同版本的WeasyPrint
+                # 使用更简单的方式调用write_pdf，避免参数不匹配问题
+                html = HTML(string=html_content)
+                # 只传递必要的参数
+                html.write_pdf(file_path, stylesheets=[page_css])
                 
                 print(f"PDF报告已成功生成: {file_path}")
                 
@@ -334,14 +334,21 @@ class ReportGenerator:
                         f.write("Linux安装指南:\n")
                         f.write("Ubuntu/Debian: sudo apt-get install python3-pip python3-dev\n")
                         f.write("CentOS/RHEL: sudo yum install python3-pip python3-devel\n")
-                        f.write("然后运行: pip install weasyprint\n")
+                        f.write("然后运行: pip install weasyprint==55.0\n")  # 指定稳定版本
                         f.write("可能还需要安装系统依赖: sudo apt-get install libcairo2-dev libpango1.0-dev libgdk-pixbuf2.0-dev libffi-dev\n")
             except Exception as e:
-                raise Exception(f"生成PDF报告失败: {str(e)}")
+                # 捕获并提供更具体的错误信息
+                error_message = str(e)
+                if "__init__() takes 1 positional argument but 3 were given" in error_message:
+                    # 针对Linux上常见的参数错误提供更具体的解决建议
+                    raise Exception(f"生成PDF报告失败: 版本兼容性问题。请尝试安装特定版本的WeasyPrint: pip install weasyprint==55.0")
+                else:
+                    raise Exception(f"生成PDF报告失败: {error_message}")
             
             return file_path
         except Exception as e:
-            raise Exception(f"生成PDF报告失败: {str(e)}")
+            # 包装异常，提供更明确的错误链
+            raise Exception(f"生成PDF报告失败: {str(e)}") from e
     
     def _save_html_report(self):
         """保存HTML格式的报告"""

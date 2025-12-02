@@ -327,8 +327,6 @@ class CodeScanner(QObject):
                 
                 # 严重性级别映射规则
                 severity_rules = {
-                    # 高严重性：可能导致安全问题、功能错误或严重性能问题的规则
-                    '高严重性关键词': ['安全', '漏洞', 'SQL注入', 'XSS', '未授权', '未加密', '崩溃', '死循环', '内存泄漏', 'Fatal', 'Error'],
                     # 中严重性：不符合最佳实践但不会立即导致严重问题的规则
                     '中严重性关键词': ['规范', '风格', '命名', '缩进', '行长度', '格式', 'PEP8', 'warning', 'Warning'],
                     # 低严重性：轻微的风格问题或建议性的改进
@@ -358,20 +356,17 @@ class CodeScanner(QObject):
                     
                     # 如果没有明确的严重性级别，则根据规则类型和消息内容自动判断
                     if severity is None:
-                        # 默认设置为medium
-                        severity = 'medium'
-                        
-                        # 组合规则名称和描述进行匹配
-                        full_text = (rule_name + ' ' + description).lower()
-                        
-                        # 检查高严重性关键词
-                        for keyword in severity_rules['高严重性关键词']:
-                            if keyword.lower() in full_text:
-                                severity = 'high'
-                                break
-                        
-                        # 如果不是高严重性，检查低严重性关键词
-                        if severity == 'medium':
+                        # 命名规范问题统一设为中等严重性
+                        if '命名' in description or '命名规范' in description:
+                            severity = 'medium'
+                        else:
+                            # 默认设置为medium
+                            severity = 'medium'
+                            
+                            # 组合规则名称和描述进行匹配
+                            full_text = (rule_name + ' ' + description).lower()
+                            
+                            # 检查低严重性关键词
                             for keyword in severity_rules['低严重性关键词']:
                                 if keyword.lower() in full_text:
                                     severity = 'low'

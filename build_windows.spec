@@ -51,7 +51,19 @@ hiddenimports = [
     "weasyprint.images",
     "weasyprint.text",
     "weasyprint.urls",
-    "weasyprint.pdf"
+    "weasyprint.pdf",
+    # 添加GObject相关的隐藏导入
+    "gi",
+    "gi.repository",
+    "gi.repository.GObject",
+    "gi.repository.Gio",
+    "gi.repository.GLib",
+    # 添加WeasyPrint的其他依赖
+    "pydyf",
+    "cssselect2",
+    "html5lib",
+    "cairo",
+    "cairocffi"
 ]
 
 # 收集子模块
@@ -65,9 +77,41 @@ collect_all = [
     "src.core"
 ]
 
+# Windows平台特定配置
+def get_gobject_binaries():
+    """尝试获取GObject相关的二进制文件"""
+    import os
+    import sys
+    binaries = []
+    # 检查常见的GTK/GObject安装路径
+    possible_paths = [
+        os.path.join(sys.base_prefix, 'Library', 'bin'),
+        os.path.join(os.environ.get('ProgramFiles', ''), 'GTK3-Runtime Win64', 'bin'),
+        os.path.join(os.environ.get('ProgramFiles(x86)', ''), 'GTK3-Runtime Win32', 'bin')
+    ]
+    
+    # 关键的GObject DLLs
+    critical_dlls = [
+        'gobject-2.0-0.dll',
+        'glib-2.0-0.dll',
+        'gmodule-2.0-0.dll',
+        'gthread-2.0-0.dll'
+    ]
+    
+    for path in possible_paths:
+        if os.path.exists(path):
+            for dll in critical_dlls:
+                dll_path = os.path.join(path, dll)
+                if os.path.exists(dll_path):
+                    binaries.append((dll_path, '.'))
+    return binaries
+
+# 获取GObject二进制文件
+gobject_binaries = get_gobject_binaries()
+
 a = Analysis(['src/main.py'],
              pathex=[],
-             binaries=[],
+             binaries=gobject_binaries,
              datas=datas,
              hiddenimports=hiddenimports,
              hookspath=[],
@@ -75,7 +119,7 @@ a = Analysis(['src/main.py'],
              runtime_hooks=[],
              excludes=[],
              win_no_prefer_redirects=False,
-             win_private_assemblies=False,
+             win_private_assemblies=True,  # 使用私有程序集以避免DLL冲突
              cipher=block_cipher,
              noarchive=False)
 
@@ -101,7 +145,7 @@ executables = [
         bootloader_ignore_signals=False,
         strip=False,
         upx=True,
-        upx_exclude=[],
+        upx_exclude=['*.dll'],  # 排除DLL文件的UPX压缩，避免加载问题
         runtime_tmpdir=None,
         console=False,
         disable_windowed_traceback=False,
