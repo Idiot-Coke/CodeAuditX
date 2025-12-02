@@ -65,49 +65,60 @@ class JavascriptParser(BaseParser):
             })
             return violations
         
+        # 检查是否允许包含Error/ERROR的命名
+        allow_error_naming = self.rules.get('allow_error_naming', False)
+        
         # 检查函数命名
         for func in parsed_data.get('functions', []):
-            violation = self._check_naming_convention(
-                func['name'], 
-                self.naming_patterns['function'], 
-                '函数命名不规范'
-            )
-            if violation:
-                violation['line'] = func['line']
-                violations.append(violation)
+            # 如果允许包含Error/ERROR的命名且名称中包含这些词汇，则跳过检查
+            if not (allow_error_naming and ('Error' in func['name'] or 'ERROR' in func['name'])):
+                violation = self._check_naming_convention(
+                    func['name'], 
+                    self.naming_patterns['function'], 
+                    '函数命名不规范'
+                )
+                if violation:
+                    violation['line'] = func['line']
+                    violations.append(violation)
         
         # 检查变量命名
         for var in parsed_data.get('variables', []):
-            violation = self._check_naming_convention(
-                var['name'], 
-                self.naming_patterns['variable'], 
-                '变量命名不规范'
-            )
-            if violation:
-                violation['line'] = var['line']
-                violations.append(violation)
+            # 如果允许包含Error/ERROR的命名且名称中包含这些词汇，则跳过检查
+            if not (allow_error_naming and ('Error' in var['name'] or 'ERROR' in var['name'])):
+                violation = self._check_naming_convention(
+                    var['name'], 
+                    self.naming_patterns['variable'], 
+                    '变量命名不规范'
+                )
+                if violation:
+                    violation['line'] = var['line']
+                    violations.append(violation)
         
         # 检查类命名
         for cls in parsed_data.get('classes', []):
-            violation = self._check_naming_convention(
-                cls['name'], 
-                self.naming_patterns['class'], 
-                '类命名不规范'
-            )
-            if violation:
-                violation['line'] = cls['line']
-                violations.append(violation)
+            # 如果允许包含Error/ERROR的命名且名称中包含这些词汇，则跳过检查
+            if not (allow_error_naming and ('Error' in cls['name'] or 'ERROR' in cls['name'])):
+                violation = self._check_naming_convention(
+                    cls['name'], 
+                    self.naming_patterns['class'], 
+                    '类命名不规范'
+                )
+                if violation:
+                    violation['line'] = cls['line']
+                    violations.append(violation)
         
         # 检查常量命名
         for const in parsed_data.get('constants', []):
-            violation = self._check_naming_convention(
-                const['name'], 
-                self.naming_patterns['constant'], 
-                '常量命名不规范'
-            )
-            if violation:
-                violation['line'] = const['line']
-                violations.append(violation)
+            # 如果允许包含Error/ERROR的命名且名称中包含这些词汇，则跳过检查
+            if not (allow_error_naming and ('Error' in const['name'] or 'ERROR' in const['name'])):
+                violation = self._check_naming_convention(
+                    const['name'], 
+                    self.naming_patterns['constant'], 
+                    '常量命名不规范'
+                )
+                if violation:
+                    violation['line'] = const['line']
+                    violations.append(violation)
         
         # 检查代码行长度
         line_violations = self._check_line_length(

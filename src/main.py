@@ -8,8 +8,9 @@ import platform
 # 添加项目根目录到Python路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# macOS特定的初始化设置，解决资源加载和NSImage断言问题
+# 平台特定的初始化设置
 if platform.system() == 'Darwin':
+    # macOS特定设置，解决资源加载和NSImage断言问题
     # 重要：在导入PyQt5之前设置环境变量
     # 这些环境变量必须在Qt初始化之前设置才有效
     os.environ['QT_MAC_WANTS_LAYER'] = '1'
@@ -19,6 +20,12 @@ if platform.system() == 'Darwin':
     os.environ['QT_ENABLE_HIGHDPI_SCALING'] = '0'
     # 额外安全设置，防止bundle路径问题
     os.environ['QT_MAC_USE_NATIVE_MENUBAR'] = '0'
+elif platform.system() == 'Windows':
+    # Windows特定设置，确保PyInstaller打包后能正确运行
+    # 禁用高DPI缩放以提高兼容性
+    os.environ['QT_ENABLE_HIGHDPI_SCALING'] = '0'
+    # 设置Windows上的字体渲染
+    os.environ['QT_FONT_DPI'] = '96'
     
     # 对于打包的应用，需要确保正确设置bundle路径和环境
     # 检查是否是冻结应用（PyInstaller打包后的应用）
@@ -29,22 +36,34 @@ if platform.system() == 'Darwin':
         # 确定应用程序目录，为资源查找提供基础
         app_dir = os.path.dirname(app_path)
         
-        # 确保库路径正确设置
-        if 'DYLD_LIBRARY_PATH' in os.environ:
-            # 添加应用程序目录到库路径
-            os.environ['DYLD_LIBRARY_PATH'] = app_dir + ':' + os.environ['DYLD_LIBRARY_PATH']
-        else:
-            os.environ['DYLD_LIBRARY_PATH'] = app_dir
-        
-        # 对于.app包，特殊处理
-        if '.app/' in app_path:
-            # 提取.app目录
-            bundle_dir = app_path.split('.app/')[0] + '.app'
-            # 确保Resources目录存在于环境路径中
-            resources_dir = os.path.join(bundle_dir, 'Contents', 'Resources')
-            if os.path.exists(resources_dir):
-                # 添加Resources目录到Python路径
-                sys.path.insert(0, resources_dir)
+        # 根据不同平台设置不同的环境变量
+        if platform.system() == 'Darwin':
+            # macOS特定设置
+            # 确保库路径正确设置
+            if 'DYLD_LIBRARY_PATH' in os.environ:
+                # 添加应用程序目录到库路径
+                os.environ['DYLD_LIBRARY_PATH'] = app_dir + ':' + os.environ['DYLD_LIBRARY_PATH']
+            else:
+                os.environ['DYLD_LIBRARY_PATH'] = app_dir
+            
+            # 对于.app包，特殊处理
+            if '.app/' in app_path:
+                # 提取.app目录
+                bundle_dir = app_path.split('.app/')[0] + '.app'
+                # 确保Resources目录存在于环境路径中
+                resources_dir = os.path.join(bundle_dir, 'Contents', 'Resources')
+                if os.path.exists(resources_dir):
+                    # 添加Resources目录到Python路径
+                    sys.path.insert(0, resources_dir)
+        elif platform.system() == 'Windows':
+            # Windows特定设置
+            # 添加应用程序目录到系统路径，确保能找到DLL和其他资源
+            if app_dir not in os.environ['PATH']:
+                os.environ['PATH'] = app_dir + ';' + os.environ['PATH']
+            
+            # 确保应用程序目录在Python路径的最前面
+            if app_dir not in sys.path:
+                sys.path.insert(0, app_dir)
         
     # 尝试使用PyObjC设置bundle，这是可选的，但可以帮助解决某些问题
     pyobjc_available = False
@@ -81,13 +100,34 @@ if platform.system() == 'Darwin':
     
     # 对于打包应用，确保Qt插件路径正确
     if getattr(sys, 'frozen', False):
-        # 设置Qt插件路径指向应用程序目录
-        qt_plugin_path = os.path.join(os.path.dirname(sys.executable), 'Qt', 'plugins')
-        if os.path.exists(qt_plugin_path):
-            os.environ['QT_PLUGIN_PATH'] = qt_plugin_path
+        app_dir = os.path.dirname(sys.executable)
+        # 根据不同平台设置Qt插件路径
+        if platform.system() == 'Windows':
+            # Windows特定的Qt插件路径设置
+            # 尝试多个可能的插件路径位置
+            possible_plugin_paths = [
+                # 直接在应用目录下的plugins文件夹
+                os.path.join(app_dir, 'plugins'),
+                # PyInstaller默认的plugins位置
+                os.path.join(app_dir, 'Qt', 'plugins'),
+                # 应用目录本身作为后备
+                app_dir
+            ]
+            
+            # 找到第一个存在的插件路径
+            for plugin_path in possible_plugin_paths:
+                if os.path.exists(plugin_path):
+                    os.environ['QT_PLUGIN_PATH'] = plugin_path
+                    break
         else:
-            # 如果找不到Qt/plugins目录，使用应用程序目录
-            os.environ['QT_PLUGIN_PATH'] = os.path.dirname(sys.executable)
+            # macOS和Linux的设置
+            # 设置Qt插件路径指向应用程序目录
+            qt_plugin_path = os.path.join(app_dir, 'Qt', 'plugins')
+            if os.path.exists(qt_plugin_path):
+                os.environ['QT_PLUGIN_PATH'] = qt_plugin_path
+            else:
+                # 如果找不到Qt/plugins目录，使用应用程序目录
+                os.environ['QT_PLUGIN_PATH'] = app_dir
 
 from PyQt5.QtWidgets import QApplication
 from src.ui.main_window import MainWindow

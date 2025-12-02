@@ -386,27 +386,37 @@ class CodeScanner(QObject):
                     }
                     formatted_violations.append(formatted_violation)
                 
+                # 过滤特殊消息
+                filtered_violations = []
+                for violation in formatted_violations:
+                    description = violation.get('description', '').lower()
+                    rule_name = violation.get('rule_name', '').lower()
+                    # 跳过特殊消息
+                    if 'done processing' not in description and 'total errors found' not in description and \
+                       'done processing' not in rule_name and 'total errors found' not in rule_name:
+                        filtered_violations.append(violation)
+                
                 # 更新违规统计
                 # 1. 按类型统计
-                for violation in formatted_violations:
+                for violation in filtered_violations:
                     violation_type = violation.get('rule_name', 'unknown')
                     if violation_type not in self.results['violations']:
                         self.results['violations'][violation_type] = 0
                     self.results['violations'][violation_type] += 1
                 
                 # 2. 按文件统计违规数
-                self.results['violations_by_file'][file_path] = len(formatted_violations)
+                self.results['violations_by_file'][file_path] = len(filtered_violations)
                 
                 # 3. 按严重性统计
-                for violation in formatted_violations:
+                for violation in filtered_violations:
                     severity = violation.get('severity', 'medium')
                     if severity not in self.results['violations_by_severity']:
                         self.results['violations_by_severity'][severity] = 0
                     self.results['violations_by_severity'][severity] += 1
                 
                 # 4. 保存详细违规信息
-                if formatted_violations:
-                    self.results['details'][file_path] = formatted_violations
+                if filtered_violations:
+                    self.results['details'][file_path] = filtered_violations
             
             # 保存当前扫描信息
             self.last_scan_info['current_file'] = file_path

@@ -6,8 +6,11 @@ import sys
 import json
 import csv
 import datetime
-import pdfkit
 from .config_manager import ConfigManager
+# 使用WeasyPrint替代pdfkit
+from weasyprint import HTML, CSS
+# FontConfiguration已在较新版本中移至不同位置或不再需要
+# 如果需要字体配置，现在通常直接从weasyprint导入或不需要显式导入
 
 class ReportGenerator:
     def __init__(self, results, ruleset=None):
@@ -276,96 +279,65 @@ class ReportGenerator:
             # 先生成HTML内容
             html_content = self._generate_html_content(include_summary, include_details)
             
-            # 尝试使用pdfkit将HTML转换为PDF
+            # 提前导入platform并获取系统信息
+            import platform
+            system = platform.system()
+            
+            # 使用WeasyPrint将HTML转换为PDF
             try:
-                # 针对不同平台设置不同的配置
-                import platform
-                system = platform.system()
-                architecture = platform.machine()
+                from weasyprint import HTML, CSS
+                # 移除FontConfiguration导入，因为在新版WeasyPrint中不再需要
                 
-                # 设置pdfkit选项
-                options = {
-                    'page-size': 'A4',
-                    'margin-top': '20mm',
-                    'margin-right': '20mm',
-                    'margin-bottom': '20mm',
-                    'margin-left': '20mm',
-                    'encoding': "UTF-8",
-                    'no-outline': None,
-                    'enable-local-file-access': True
-                }
+                # 定义页面样式，确保与原设计一致
+                page_css = CSS(string='''
+                    @page {
+                        size: A4;
+                        margin-top: 20mm;
+                        margin-right: 20mm;
+                        margin-bottom: 20mm;
+                        margin-left: 20mm;
+                    }
+                    body {
+                        font-family: Arial, sans-serif;
+                        font-size: 12pt;
+                    }
+                ''')
                 
-                # 为macOS添加特定选项以增强兼容性
-                if system == 'Darwin':
-                    options['disable-smart-shrinking'] = True
-                    options['no-background'] = None
+                # 生成PDF (新版WeasyPrint不再需要font_config参数)
+                HTML(string=html_content).write_pdf(
+                    file_path,
+                    stylesheets=[page_css]
+                )
+                
+                print(f"PDF报告已成功生成: {file_path}")
+                
+            except ImportError:
+                # 处理WeasyPrint未安装的情况
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write("PDF报告生成需要安装WeasyPrint\n\n")
+                    f.write("请运行以下命令安装WeasyPrint: pip install weasyprint\n")
+                    f.write("安装后，重启应用程序即可生成PDF报告\n\n")
                     
-                # 配置路径查找，尝试多个常见位置
-                wkhtmltopdf_path = None
-                possible_paths = []
-                
-                # 首先添加应用程序目录路径，这对于打包的应用很重要
-                app_dir = os.path.dirname(os.path.abspath(sys.executable))
-                if system == 'Windows':
-                    possible_paths = [
-                        # 应用程序目录中的wkhtmltopdf
-                        os.path.join(app_dir, 'wkhtmltopdf.exe'),
-                        # 应用程序目录的bin子目录
-                        os.path.join(app_dir, 'bin', 'wkhtmltopdf.exe'),
-                        # 标准安装位置
-                        r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe',
-                        r'C:\Program Files (x86)\wkhtmltopdf\bin\wkhtmltopdf.exe'
-                    ]
-                elif system == 'Darwin':
-                    possible_paths = [
-                        '/usr/local/bin/wkhtmltopdf',
-                        '/opt/homebrew/bin/wkhtmltopdf',
-                        '/usr/bin/wkhtmltopdf'
-                    ]
-                elif system == 'Linux':
-                    possible_paths = [
-                        '/usr/bin/wkhtmltopdf',
-                        '/usr/local/bin/wkhtmltopdf'
-                    ]
-                
-                # 尝试找到wkhtmltopdf可执行文件
-                for path in possible_paths:
-                    if os.path.exists(path):
-                        wkhtmltopdf_path = path
-                        break
-                
-                # 使用找到的路径或默认配置
-                config = pdfkit.configuration(wkhtmltopdf=wkhtmltopdf_path) if wkhtmltopdf_path else None
-                
-                # 生成PDF
-                pdfkit.from_string(html_content, file_path, options=options, configuration=config)
-            except OSError as e:
-                # 处理wkhtmltopdf未安装的情况
-                if "No wkhtmltopdf executable found" in str(e) or "not found" in str(e).lower():
-                    # 创建一个简单的文本文件提示用户安装wkhtmltopdf
-                    with open(file_path, 'w', encoding='utf-8') as f:
-                        f.write("PDF报告生成需要安装wkhtmltopdf\n\n")
-                        f.write("请访问 https://wkhtmltopdf.org/downloads.html 下载并安装适合您系统的版本\n")
-                        f.write("安装后，重启应用程序即可生成PDF报告\n\n")
-                        
-                        # 添加针对不同平台的具体安装指南
-                        if system == 'Windows':
-                            f.write("Windows安装指南:\n")
-                            f.write("1. 下载Windows安装包\n")
-                            f.write("2. 运行安装程序并选择将wkhtmltopdf添加到系统PATH\n")
-                            f.write("3. 安装完成后重启电脑以确保PATH设置生效\n")
-                            f.write("4. 或者，您可以手动下载wkhtmltopdf.exe并将其放置在与CodeAuditX.exe相同的目录中\n")
-                        elif system == 'Darwin':
-                            f.write("macOS安装指南:\n")
-                            f.write("1. 推荐使用Homebrew安装: brew install wkhtmltopdf\n")
-                            f.write("2. 或下载macOS安装包并安装\n")
-                            f.write("3. 对于Apple Silicon (M1/M2/M3)芯片，请确保安装兼容版本\n")
-                        elif system == 'Linux':
-                            f.write("Linux安装指南:\n")
-                            f.write("Ubuntu/Debian: sudo apt-get install wkhtmltopdf\n")
-                            f.write("CentOS/RHEL: sudo yum install wkhtmltopdf\n")
-                else:
-                    raise Exception(f"生成PDF报告失败: {str(e)}")
+                    # 添加针对不同平台的具体安装指南
+                    if system == 'Windows':
+                        f.write("Windows安装指南:\n")
+                        f.write("1. 确保已安装pip和Python\n")
+                        f.write("2. 运行命令: pip install weasyprint\n")
+                        f.write("3. WeasyPrint可能需要安装GTK+依赖，详细信息请参考官方文档\n")
+                    elif system == 'Darwin':
+                        f.write("macOS安装指南:\n")
+                        f.write("1. 确保已安装pip和Python\n")
+                        f.write("2. 运行命令: pip install weasyprint\n")
+                        f.write("3. WeasyPrint在macOS上依赖Cairo，可能需要通过Homebrew安装\n")
+                        f.write("   运行: brew install cairo pango gdk-pixbuf libffi\n")
+                    elif system == 'Linux':
+                        f.write("Linux安装指南:\n")
+                        f.write("Ubuntu/Debian: sudo apt-get install python3-pip python3-dev\n")
+                        f.write("CentOS/RHEL: sudo yum install python3-pip python3-devel\n")
+                        f.write("然后运行: pip install weasyprint\n")
+                        f.write("可能还需要安装系统依赖: sudo apt-get install libcairo2-dev libpango1.0-dev libgdk-pixbuf2.0-dev libffi-dev\n")
+            except Exception as e:
+                raise Exception(f"生成PDF报告失败: {str(e)}")
             
             return file_path
         except Exception as e:
@@ -397,24 +369,56 @@ class ReportGenerator:
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>代码规范度扫描报告</title>
     <style>
-        body {{ font-family: Arial, sans-serif; margin: 20px; }}
-        h1 {{ color: #333; }}
+        /* 基础样式 */
+        body {{ font-family: Arial, sans-serif; margin: 20px; font-size: 12px; }}
+        h1 {{ color: #333; font-size: 18px; }}
         .summary {{ background-color: #f0f0f0; padding: 15px; border-radius: 5px; margin-bottom: 20px; }}
         .section {{ margin-bottom: 30px; }}
-        table {{ border-collapse: collapse; width: 100%; table-layout: fixed; margin-bottom: 20px; }}
-        th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; word-wrap: break-word; }}
-        th {{ background-color: #4CAF50; color: white; }}
+        
+        /* 表格基础样式 - 为PDF优化 */
+        table {{ border-collapse: collapse; width: 100%; table-layout: fixed; margin-bottom: 20px; white-space: normal; }}
+        th, td {{ 
+            border: 1px solid #ddd; 
+            padding: 6px; 
+            text-align: left; 
+            word-wrap: break-word; 
+            word-break: break-all; 
+            white-space: normal; 
+            max-width: 100%; 
+        }}
+        th {{ background-color: #4CAF50; color: white; font-size: 11px; padding: 8px 4px; }}
         tr:nth-child(even) {{ background-color: #f2f2f2; }}
+        
+        /* 评分样式 */
         .score {{ font-size: 24px; font-weight: bold; color: {'green' if score >= 80 else 'orange' if score >= 60 else 'red'}; }}
+        
+        /* 严重性样式 */
         .high {{ background-color: #ffcccc; }}
         .medium {{ background-color: #ffffcc; }}
         .low {{ background-color: #ccffcc; }}
-        /* 调整列宽，确保所有列都能显示 */
-        .violations-table th:nth-child(1), .violations-table td:nth-child(1) {{ width: 25%; }}
-        .violations-table th:nth-child(2), .violations-table td:nth-child(2) {{ width: 15%; }}
-        .violations-table th:nth-child(3), .violations-table td:nth-child(3) {{ width: 35%; }}
-        .violations-table th:nth-child(4), .violations-table td:nth-child(4) {{ width: 10%; text-align: center; }}
-        .violations-table th:nth-child(5), .violations-table td:nth-child(5) {{ width: 15%; text-align: center; }}
+        
+        /* 违规信息表格 - 优化列宽和换行 */
+        .violations-table th:nth-child(1), .violations-table td:nth-child(1) {{ width: 20%; font-size: 9px; }}
+        .violations-table th:nth-child(2), .violations-table td:nth-child(2) {{ width: 14%; font-size: 9px; }}
+        .violations-table th:nth-child(3), .violations-table td:nth-child(3) {{ width: 35%; font-size: 9px; }}
+        .violations-table th:nth-child(4), .violations-table td:nth-child(4) {{ width: 10%; text-align: center; font-size: 9px; }}
+        .violations-table th:nth-child(5), .violations-table td:nth-child(5) {{ width: 12%; text-align: center; font-size: 9px; }}
+        
+        /* PDF导出专用优化 */
+        @media print {{ 
+            body {{ font-size: 10px; margin: 10px; }}
+            .violations-table td {{ 
+                font-size: 9px; 
+                line-height: 1.2; 
+                padding: 4px; 
+                overflow-wrap: break-word; 
+                word-break: break-word; 
+            }}
+            .violations-table th {{ 
+                font-size: 9px; 
+                padding: 6px 2px; 
+            }}
+        }}
         </style>
 </head>
 <body>

@@ -64,7 +64,12 @@ class GoParser(BaseParser):
             return violations
         
         # 检查函数命名
+        allow_error_naming = self.rules.get('allow_error_naming', False)
         for func in parsed_data.get('functions', []):
+            # 特殊处理：如果允许错误相关命名，且函数名包含Error或ERROR，则跳过检查
+            if allow_error_naming and ('Error' in func['name'] or 'ERROR' in func['name']):
+                continue
+                
             violation = self._check_naming_convention(
                 func['name'], 
                 self.naming_patterns['function'], 
@@ -76,6 +81,10 @@ class GoParser(BaseParser):
         
         # 检查变量命名
         for var in parsed_data.get('variables', []):
+            # 特殊处理：如果允许错误相关命名，且变量名包含Error或ERROR，则跳过检查
+            if allow_error_naming and ('Error' in var['name'] or 'ERROR' in var['name']):
+                continue
+                
             violation = self._check_naming_convention(
                 var['name'], 
                 self.naming_patterns['variable'], 

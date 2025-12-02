@@ -788,12 +788,12 @@ class MainWindow(QMainWindow):
                         try:
                             with open(report_path, 'r', encoding='utf-8') as f:
                                 content = f.read(100)  # 读取文件开头
-                                if "wkhtmltopdf" in content and len(content) < 1000:
+                                if "WeasyPrint" in content and len(content) < 1000:
                                     # 这是一个提示文件，不是真正的PDF
-                                    self.update_log(f"PDF生成需要安装wkhtmltopdf，已创建说明文件")
+                                    self.update_log(f"PDF生成需要安装WeasyPrint，已创建说明文件")
                                     QMessageBox.information(self, "依赖缺失", 
                                                            f"已创建说明文件：{report_path}\n\n" +
-                                                           "PDF报告生成需要安装wkhtmltopdf。说明文件中包含详细的安装指南。")
+                                                           "PDF报告生成需要安装WeasyPrint。说明文件中包含详细的安装指南。")
                                     return
                         except Exception:
                             # 如果无法以文本方式打开，可能是真正的PDF文件

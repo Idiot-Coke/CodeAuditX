@@ -20,6 +20,7 @@ global_rules = {
     "allow_trailing_whitespace": False,  # 不允许行尾空格
     "allow_multiple_statements": False,  # 不允许一行多个语句
     "max_empty_lines": 2,       # 最大空行数
+    "allow_error_naming": True,  # 允许包含Error/ERROR的命名
 }
 
 # Google 规则集
@@ -36,6 +37,7 @@ google_rules = {
         "expected_indent": 4,       # 预期缩进空格数
         "min_comment_coverage": 0.15,  # 最小注释覆盖率(15%)
         "docstring_style": "google",  # Google风格的文档字符串
+        "allow_error_naming": True,  # 允许包含Error/ERROR的命名
     },
     
     # JavaScript 特定规则
@@ -48,11 +50,12 @@ google_rules = {
         "expected_indent": 2,       # 预期缩进空格数
         "min_comment_coverage": 0.1,  # 最小注释覆盖率(10%)
         "semicolon_required": True,  # 要求分号
+        "allow_error_naming": True,  # 允许包含Error/ERROR的命名
     },
     
     # C/C++ 特定规则
     "cpp": {
-        "function_naming": r"^[a-z][a-zA-Z0-9]*$",  # 小驼峰命名法
+        "function_naming": r"^[a-z][a-zA-Z0-9]*$",  # 小驼峰命名法（允许包含Error等词汇）
         "variable_naming": r"^[a-z][a-zA-Z0-9]*$",  # 小驼峰命名法
         "class_naming": r"^[A-Z][a-zA-Z0-9]*$",   # 大驼峰命名法
         "constant_naming": r"^[A-Z_][A-Z0-9_]*$",  # 全大写字母和下划线
@@ -60,6 +63,8 @@ google_rules = {
         "expected_indent": 4,       # 预期缩进空格数
         "min_comment_coverage": 0.2,  # 最小注释覆盖率(20%)
         "header_guard_style": "include_guard",  # 头文件保护风格
+        # 添加一个配置项来明确允许错误相关的命名
+        "allow_error_naming": True,
     },
     
     # PHP 特定规则
@@ -71,6 +76,7 @@ google_rules = {
         "max_line_length": 120,     # 最大行长度
         "expected_indent": 4,       # 预期缩进空格数
         "min_comment_coverage": 0.1,  # 最小注释覆盖率(10%)
+        "allow_error_naming": True,  # 允许包含Error/ERROR的命名
     },
     
     # Go 特定规则
@@ -82,6 +88,7 @@ google_rules = {
         "max_line_length": 100,     # 最大行长度
         "expected_indent": 4,       # 预期缩进空格数
         "min_comment_coverage": 0.1,  # 最小注释覆盖率(10%)
+        "allow_error_naming": True,  # 允许包含Error/ERROR的命名
     },
     
     # Java 特定规则
@@ -93,6 +100,7 @@ google_rules = {
         "max_line_length": 100,     # 最大行长度
         "expected_indent": 4,       # 预期缩进空格数
         "min_comment_coverage": 0.15,  # 最小注释覆盖率(15%)
+        "allow_error_naming": True,  # 允许包含Error/ERROR的命名
     },
 }
 
@@ -112,6 +120,7 @@ pep8_rules = {
         "blank_lines_after_imports": 2,  # 导入语句后空行数
         "blank_lines_before_class": 2,   # 类定义前空行数
         "blank_lines_before_function": 2,  # 函数定义前空行数
+        "allow_error_naming": True,  # 允许包含Error/ERROR的命名
     },
     
     # 其他语言规则沿用全局规则
@@ -132,6 +141,7 @@ airbnb_rules = {
         "min_comment_coverage": 0.1,  # 最小注释覆盖率(10%)
         "semicolon_required": False,  # 不要求分号
         "arrow_function_preference": "always",  # 优先使用箭头函数
+        "allow_error_naming": True,  # 允许包含Error/ERROR的命名
     },
     
     # 其他语言规则沿用全局规则
@@ -152,6 +162,7 @@ standard_rules = {
         "min_comment_coverage": 0.1,  # 最小注释覆盖率(10%)
         "semicolon_required": False,  # 不要求分号
         "quotes_style": "single",  # 单引号
+        "allow_error_naming": True,  # 允许包含Error/ERROR的命名
     },
     
     # 其他语言规则沿用全局规则

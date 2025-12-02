@@ -234,6 +234,12 @@ class PythonParser(BaseParser):
     def _check_naming_convention(self, name, pattern, violation_type):
         """检查名称是否符合指定的正则表达式模式"""
         import re
+        
+        # 检查是否允许包含Error/ERROR的命名
+        allow_error_naming = self.rules.get('allow_error_naming', False)
+        if allow_error_naming and ('Error' in name or 'ERROR' in name):
+            return None
+        
         if not re.match(pattern, name):
             # 提供更详细的命名规范解释
             convention_explanation = {
