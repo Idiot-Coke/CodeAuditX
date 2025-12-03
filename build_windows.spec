@@ -91,20 +91,12 @@ collect_all = [
 
 # Windows平台特定配置
 def get_gobject_binaries():
-    """直接使用已知的GTK3 DLL路径，确保PyInstaller能够找到它们"""
+    """收集GTK3 DLLs，支持多种安装方式（Chocolatey、标准安装、conda）"""
     import os
     import sys
     import subprocess
     
     binaries = []
-    
-    # 直接指定GTK3运行时的DLL路径
-    # 这些路径是基于GitHub Actions环境和标准Windows安装路径
-    gtk_paths = [
-        "C:\\Program Files\\GTK3-Runtime Win64\\bin",
-        "C:\\Program Files (x86)\\GTK3-Runtime Win32\\bin",
-        os.path.join(sys.base_prefix, "Library", "bin")
-    ]
     
     # 关键的GTK/GObject DLLs列表
     critical_dlls = [
@@ -129,48 +121,70 @@ def get_gobject_binaries():
         'libxslt-1.dll'
     ]
     
-    # 首先尝试直接添加已知路径的DLLs
-    for path in gtk_paths:
+    # 尝试多种可能的GTK3安装路径
+    # 1. Chocolatey安装路径
+    chocolatey_paths = [
+        os.path.join(os.environ.get("ProgramData", ""), "chocolatey", "lib", "gtk-runtime", "tools", "bin"),
+        os.path.join(os.environ.get("ChocolateyInstall", ""), "lib", "gtk-runtime", "tools", "bin")
+    ]
+    
+    # 2. 标准Windows安装路径
+    standard_paths = [
+        "C:\\Program Files\\GTK3-Runtime Win64\\bin",
+        "C:\\Program Files (x86)\\GTK3-Runtime Win32\\bin"
+    ]
+    
+    # 3. Conda/Anaconda路径
+    conda_paths = [
+        os.path.join(sys.base_prefix, "Library", "bin")
+    ]
+    
+    # 4. 环境变量中的路径
+    env_paths = os.environ.get("PATH", "").split(os.pathsep)
+    
+    # 合并所有可能的路径
+    all_paths = chocolatey_paths + standard_paths + conda_paths + env_paths
+    
+    # 去重并检查路径是否存在
+    unique_paths = []
+    for path in all_paths:
+        if path and path not in unique_paths and os.path.exists(path) and os.path.isdir(path):
+            unique_paths.append(path)
+    
+    # 收集DLLs
+    for path in unique_paths:
+        print(f"检查GTK3 DLLs在: {path}")
+        found_in_path = 0
         for dll in critical_dlls:
             dll_path = os.path.join(path, dll)
             if os.path.exists(dll_path):
                 binaries.append((dll_path, '.'))
+                found_in_path += 1
+        if found_in_path > 0:
+            print(f"  在该路径找到 {found_in_path} 个DLLs")
     
-    # 如果没有找到任何DLLs，尝试从GitHub下载并解压
-    if not binaries:
-        print("没有找到GTK3 DLLs，尝试下载...")
-        import zipfile
-        import tempfile
-        
-        # 下载GTK3 DLLs
-        gtk_url = "https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer/releases/download/2023-12-29/gtk3-runtime-3.24.37-2023-12-29-ts-win64.exe"
-        
-        # 创建临时目录
-        with tempfile.TemporaryDirectory() as temp_dir:
-            gtk_exe = os.path.join(temp_dir, "gtk3-runtime.exe")
-            
-            # 下载GTK3运行时安装包
-            import urllib.request
-            urllib.request.urlretrieve(gtk_url, gtk_exe)
-            
-            # 解压安装包中的DLLs（使用7zip，如果可用）
-            if os.path.exists(gtk_exe):
-                print("下载成功，尝试解压...")
-                
-                # 检查是否安装了7zip
-                try:
-                    subprocess.run(["7z", "x", gtk_exe, "-o" + temp_dir, "*.dll"], check=True, capture_output=True)
-                    
-                    # 查找解压后的DLLs
-                    for root, dirs, files in os.walk(temp_dir):
-                        for file in files:
-                            if file.lower().endswith(".dll") and file in critical_dlls:
-                                dll_path = os.path.join(root, file)
-                                binaries.append((dll_path, '.'))
-                except:
-                    print("无法解压GTK3运行时，跳过...")
+    # 如果找到DLLs，直接返回
+    if binaries:
+        print(f"总计找到 {len(binaries)} 个GTK/GObject相关DLLs")
+        return binaries
     
-    print(f"找到{len(binaries)}个GTK/GObject相关DLLs")
+    # 如果没有找到任何DLLs，尝试搜索整个系统
+    print("在所有已知路径中未找到GTK3 DLLs，尝试在系统中搜索...")
+    try:
+        # 使用where命令查找DLLs
+        for dll in critical_dlls:
+            try:
+                result = subprocess.run(["where", dll], capture_output=True, text=True, check=True)
+                for line in result.stdout.strip().split('\n'):
+                    if line and os.path.exists(line):
+                        binaries.append((line, '.'))
+                        print(f"  找到: {line}")
+            except:
+                pass
+    except:
+        pass
+    
+    print(f"最终找到 {len(binaries)} 个GTK/GObject相关DLLs")
     return binaries
 
 # 获取GObject二进制文件
