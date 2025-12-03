@@ -36,7 +36,15 @@ elif platform.system() == 'Windows':
         # 确定应用程序目录，为资源查找提供基础
         app_dir = os.path.dirname(app_path)
         
-        # 根据不同平台设置不同的环境变量
+        # Windows特定设置：将应用程序目录添加到PATH环境变量
+        # 这样系统可以找到打包的DLL文件
+        if 'PATH' in os.environ:
+            # 添加应用程序目录到PATH
+            os.environ['PATH'] = app_dir + os.pathsep + os.environ['PATH']
+        else:
+            os.environ['PATH'] = app_dir
+        
+        # 对于不同平台设置不同的环境变量
         if platform.system() == 'Darwin':
             # macOS特定设置
             # 确保库路径正确设置
