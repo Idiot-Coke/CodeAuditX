@@ -44,24 +44,40 @@ jobs:
       - name: Install system dependencies (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          # 使用winget安装GTK3运行时
-          winget install --id "GNOME.GTK3Runtime" --exact --silent --accept-package-agreements --accept-source-agreements
-          # 将GTK3安装路径添加到PATH环境变量
-          $env:PATH += ";C:\Program Files\GTK3-Runtime Win64\bin"
-          # 验证安装
-          if (Test-Path "C:\Program Files\GTK3-Runtime Win64\bin\gobject-2.0-0.dll") {
-            Write-Output "GTK3 Runtime installed successfully!"
+          # 直接下载GTK3运行时，避免winget和复杂URL问题
+          Write-Output "下载GTK3运行时..."
+          $gtkUrl = "https://winlibs.com/winlibs-x86_64-posix-seh-gcc-13.2.0-mingw-w64ucrt-11.0.1-r5.zip"
+          Invoke-WebRequest -Uri $gtkUrl -OutFile "winlibs.zip" -UseBasicParsing
+          
+          # 解压GTK3相关文件
+          Write-Output "解压GTK3相关文件..."
+          Expand-Archive -Path "winlibs.zip" -DestinationPath "winlibs" -Force
+          
+          # 检查GTK3文件是否存在
+          $gtkBinPath = "winlibs\*\mingw64\bin"
+          $gobjectDll = Get-ChildItem -Path $gtkBinPath -Name "gobject-2.0-0.dll" -Recurse -ErrorAction SilentlyContinue
+          
+          if ($gobjectDll) {
+            Write-Output "GTK3文件找到!"
+            $actualGtkBinPath = (Get-ChildItem -Path $gtkBinPath -Directory -Recurse).FullName[0]
+            # 将GTK3路径添加到PATH
+            $env:PATH += ";$actualGtkBinPath"
+            Write-Output "GTK3运行时配置完成!"
           } else {
-            # 如果winget安装失败，尝试手动下载
-            Write-Output "Winget安装失败，尝试手动下载GTK3运行时..."
-            $gtkUrl = "https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer/releases/latest/download/gtk3-runtime-x64.exe"
-            Invoke-WebRequest -Uri $gtkUrl -OutFile "gtk3-runtime.exe" -UseBasicParsing
-            Start-Process -FilePath "gtk3-runtime.exe" -ArgumentList "/S" -Wait
-            # 再次验证
+            # 如果winlibs方法失败，尝试下载独立的GTK3运行时安装包
+            Write-Output "Winlibs方法失败，尝试下载独立GTK3运行时..."
+            $standaloneGtkUrl = "https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer/releases/download/2023-12-29/gtk3-runtime-3.24.37-2023-12-29-ts-win64.exe"
+            $shortUrl = $standaloneGtkUrl
+            Write-Output "使用URL: $shortUrl"
+            Invoke-WebRequest -Uri $shortUrl -OutFile "gtk3.exe" -UseBasicParsing
+            Start-Process -FilePath "gtk3.exe" -ArgumentList "/S" -Wait
+            
+            # 验证安装
             if (Test-Path "C:\Program Files\GTK3-Runtime Win64\bin\gobject-2.0-0.dll") {
-              Write-Output "GTK3 Runtime手动安装成功!"
+              $env:PATH += ";C:\Program Files\GTK3-Runtime Win64\bin"
+              Write-Output "GTK3运行时安装成功!"
             } else {
-              Write-Error "GTK3 Runtime安装失败!"
+              Write-Error "GTK3运行时安装失败!"
               exit 1
             }
           }
