@@ -75,7 +75,9 @@ hiddenimports = [
     "tinycss2",
     "webencodings",
     "lxml",
-    "cssutils"
+    "cssutils",
+    # 系统性能监控依赖
+    "psutil"
 ]
 
 # 收集子模块

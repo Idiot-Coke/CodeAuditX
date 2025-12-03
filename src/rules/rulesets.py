@@ -12,7 +12,7 @@ global_rules = {
     "constant_naming": r"^[A-Z_][A-Z0-9_]*$",  # 全大写字母和下划线
     
     # 代码风格
-    "max_line_length": 80,      # 最大行长度
+    "max_line_length": 120,      # 最大行长度
     "expected_indent": 4,       # 预期缩进空格数
     "min_comment_coverage": 0.1,  # 最小注释覆盖率(10%)
     
@@ -33,7 +33,7 @@ google_rules = {
         "variable_naming": r"^[a-z_][a-z0-9_]*$",  # 蛇形命名法
         "class_naming": r"^[A-Z][a-zA-Z0-9]*$",   # 大驼峰命名法
         "constant_naming": r"^[A-Z_][A-Z0-9_]*$",  # 全大写字母和下划线
-        "max_line_length": 80,      # 最大行长度
+        "max_line_length": 120,      # 最大行长度
         "expected_indent": 4,       # 预期缩进空格数
         "min_comment_coverage": 0.15,  # 最小注释覆盖率(15%)
         "docstring_style": "google",  # Google风格的文档字符串
@@ -46,7 +46,7 @@ google_rules = {
         "variable_naming": r"^[a-z][a-zA-Z0-9]*$",  # 小驼峰命名法
         "class_naming": r"^[A-Z][a-zA-Z0-9]*$",   # 大驼峰命名法
         "constant_naming": r"^[A-Z_][A-Z0-9_]*$",  # 全大写字母和下划线
-        "max_line_length": 80,      # 最大行长度
+        "max_line_length": 120,      # 最大行长度
         "expected_indent": 2,       # 预期缩进空格数
         "min_comment_coverage": 0.1,  # 最小注释覆盖率(10%)
         "semicolon_required": True,  # 要求分号
@@ -59,7 +59,7 @@ google_rules = {
         "variable_naming": r"^[a-z][a-zA-Z0-9]*$",  # 小驼峰命名法
         "class_naming": r"^[A-Z][a-zA-Z0-9]*$",   # 大驼峰命名法
         "constant_naming": r"^[A-Z_][A-Z0-9_]*$",  # 全大写字母和下划线
-        "max_line_length": 80,      # 最大行长度
+        "max_line_length": 120,      # 最大行长度
         "expected_indent": 4,       # 预期缩进空格数
         "min_comment_coverage": 0.2,  # 最小注释覆盖率(20%)
         "header_guard_style": "include_guard",  # 头文件保护风格
@@ -85,7 +85,7 @@ google_rules = {
         "variable_naming": r"^[a-z][a-zA-Z0-9]*$",  # 小驼峰命名法
         "type_naming": r"^[A-Z][a-zA-Z0-9]*$",      # 大驼峰命名法
         "constant_naming": r"^[A-Z_][A-Z0-9_]*$",  # 全大写字母和下划线
-        "max_line_length": 100,     # 最大行长度
+        "max_line_length": 120,     # 最大行长度
         "expected_indent": 4,       # 预期缩进空格数
         "min_comment_coverage": 0.1,  # 最小注释覆盖率(10%)
         "allow_error_naming": True,  # 允许包含Error/ERROR的命名
@@ -97,7 +97,7 @@ google_rules = {
         "variable_naming": r"^[a-z][a-zA-Z0-9]*$",  # 小驼峰命名法
         "class_naming": r"^[A-Z][a-zA-Z0-9]*$",   # 大驼峰命名法
         "constant_naming": r"^[A-Z_][A-Z0-9_]*$",  # 全大写字母和下划线
-        "max_line_length": 100,     # 最大行长度
+        "max_line_length": 120,     # 最大行长度
         "expected_indent": 4,       # 预期缩进空格数
         "min_comment_coverage": 0.15,  # 最小注释覆盖率(15%)
         "allow_error_naming": True,  # 允许包含Error/ERROR的命名
@@ -114,7 +114,7 @@ pep8_rules = {
         "variable_naming": r"^[a-z_][a-z0-9_]*$",  # 蛇形命名法
         "class_naming": r"^[A-Z][a-zA-Z0-9]*$",   # 大驼峰命名法
         "constant_naming": r"^[A-Z_][A-Z0-9_]*$",  # 全大写字母和下划线
-        "max_line_length": 79,      # 最大行长度
+        "max_line_length": 120,      # 最大行长度
         "expected_indent": 4,       # 预期缩进空格数
         "min_comment_coverage": 0.1,  # 最小注释覆盖率(10%)
         "blank_lines_after_imports": 2,  # 导入语句后空行数
@@ -136,7 +136,7 @@ airbnb_rules = {
         "variable_naming": r"^[a-z][a-zA-Z0-9]*$",  # 小驼峰命名法
         "class_naming": r"^[A-Z][a-zA-Z0-9]*$",   # 大驼峰命名法
         "constant_naming": r"^[A-Z_][A-Z0-9_]*$",  # 全大写字母和下划线
-        "max_line_length": 100,     # 最大行长度
+        "max_line_length": 120,     # 最大行长度
         "expected_indent": 2,       # 预期缩进空格数
         "min_comment_coverage": 0.1,  # 最小注释覆盖率(10%)
         "semicolon_required": False,  # 不要求分号
@@ -157,7 +157,7 @@ standard_rules = {
         "variable_naming": r"^[a-z][a-zA-Z0-9]*$",  # 小驼峰命名法
         "class_naming": r"^[A-Z][a-zA-Z0-9]*$",   # 大驼峰命名法
         "constant_naming": r"^[A-Z_][A-Z0-9_]*$",  # 全大写字母和下划线
-        "max_line_length": 80,      # 最大行长度
+        "max_line_length": 120,      # 最大行长度
         "expected_indent": 2,       # 预期缩进空格数
         "min_comment_coverage": 0.1,  # 最小注释覆盖率(10%)
         "semicolon_required": False,  # 不要求分号

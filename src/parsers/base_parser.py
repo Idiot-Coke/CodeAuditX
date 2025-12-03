@@ -81,7 +81,7 @@ class BaseParser:
             'function_naming': '^[a-z_][a-z0-9_]*$',
             'class_naming': '^[A-Z][a-zA-Z0-9]*$',
             'constant_naming': '^[A-Z_][A-Z0-9_]*$',
-            'max_line_length': 100,
+            'max_line_length': 120,
             'expected_indent': 4,
             'min_comment_coverage': 0.1
         }
@@ -169,7 +169,7 @@ class BaseParser:
         try:
             # 检查行长度
             lines = content.split('\n')
-            max_length = self.rules.get('max_line_length', 100)
+            max_length = self.rules.get('max_line_length', 120)
             
             for i, line in enumerate(lines, 1):
                 if len(line) > max_length:

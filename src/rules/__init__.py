@@ -70,7 +70,7 @@ class RuleManager:
                     'function_naming': '^[a-z_][a-z0-9_]*$',
                     'class_naming': '^[A-Z][a-zA-Z0-9]*$',
                     'constant_naming': '^[A-Z_][A-Z0-9_]*$',
-                    'max_line_length': 100,
+                    'max_line_length': 120,
                     'expected_indent': 4,
                     'min_comment_coverage': 0.1
                 }
@@ -81,7 +81,7 @@ class RuleManager:
                     'function_naming': '^[a-z_][a-z0-9_]*$',
                     'class_naming': '^[A-Z][a-zA-Z0-9]*$',
                     'constant_naming': '^[A-Z_][A-Z0-9_]*$',
-                    'max_line_length': 79,
+                    'max_line_length': 120,
                     'expected_indent': 4
                 }
             },
@@ -271,7 +271,7 @@ class RuleManager:
                         'function_naming': '^[a-z_][a-z0-9_]*$',
                         'class_naming': '^[A-Z][a-zA-Z0-9]*$',
                         'constant_naming': '^[A-Z_][A-Z0-9_]*$',
-                        'max_line_length': 100,
+                        'max_line_length': 120,
                         'expected_indent': 4,
                         'min_comment_coverage': 0.1
                     },
@@ -279,7 +279,7 @@ class RuleManager:
                         'variable_naming': '^[a-z][a-zA-Z0-9]*$',
                         'function_naming': '^[a-z][a-zA-Z0-9]*$',
                         'class_naming': '^[A-Z][a-zA-Z0-9]*$',
-                        'max_line_length': 100,
+                        'max_line_length': 120,
                         'expected_indent': 2
                     }
                 }
@@ -294,7 +294,7 @@ class RuleManager:
                         'variable_naming': '^[a-z_][a-z0-9_]*$',
                         'function_naming': '^[a-z_][a-z0-9_]*$',
                         'class_naming': '^[A-Z][a-zA-Z0-9]*$',
-                        'max_line_length': 100,
+                        'max_line_length': 120,
                         'expected_indent': 4
                     }
                 }
@@ -318,14 +318,14 @@ class RuleManager:
                                 'variable_naming': '^[a-z_][a-z0-9_]*$',
                                 'function_naming': '^[a-z_][a-z0-9_]*$',
                                 'class_naming': '^[A-Z][a-zA-Z0-9]*$',
-                                'max_line_length': 100,
+                                'max_line_length': 120,
                                 'expected_indent': 4
                             }
                         elif lang == 'javascript':
                             enhanced_ruleset[lang] = {
                                 'variable_naming': '^[a-z][a-zA-Z0-9]*$',
                                 'function_naming': '^[a-z][a-zA-Z0-9]*$',
-                                'max_line_length': 100,
+                                'max_line_length': 120,
                                 'expected_indent': 2
                             }
                         else:
@@ -341,7 +341,7 @@ class RuleManager:
                     'variable_naming': '^[a-z_][a-z0-9_]*$',
                     'function_naming': '^[a-z_][a-z0-9_]*$',
                     'class_naming': '^[A-Z][a-zA-Z0-9]*$',
-                    'max_line_length': 100,
+                    'max_line_length': 120,
                     'expected_indent': 4
                 }
             }

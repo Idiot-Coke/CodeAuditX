@@ -24,7 +24,7 @@ class JavaParser(BaseParser):
             'package': self.rules.get('package_naming', '^[a-z]+(\.[a-z0-9]+)*$')  # 小写字母和数字
         }
         
-        self.max_line_length = self.rules.get('max_line_length', 100)
+        self.max_line_length = self.rules.get('max_line_length', 120)
         self.expected_indent = self.rules.get('expected_indent', 4)
         self.min_comment_coverage = self.rules.get('min_comment_coverage', 0.1)
     

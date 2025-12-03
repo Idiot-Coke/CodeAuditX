@@ -1,6 +1,6 @@
 {
   "global": {
-    "max_line_length": 80,
+    "max_line_length": 120,
     "expected_indent": 4,
     "min_comment_coverage": 0.1
   },

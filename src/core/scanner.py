@@ -4,7 +4,9 @@
 import os
 import time
 import logging
-from PyQt5.QtCore import QObject, pyqtSignal
+import concurrent.futures
+import psutil
+from PyQt5.QtCore import QObject, pyqtSignal, QThreadPool, QRunnable, pyqtSlot
 from src.parsers import get_parser_for_file
 from src.rules import rule_manager
 
@@ -76,9 +78,9 @@ class CodeScanner(QObject):
                 logger.warning(f"规则集 '{ruleset}' 未加载成功或格式错误，使用默认规则集")
                 # 创建一个基本的默认规则集
                 self.rules = {
-                    'python': {'max_line_length': 100, 'expected_indent': 4},
-                    'javascript': {'max_line_length': 100, 'expected_indent': 2},
-                    'cpp': {'max_line_length': 100, 'expected_indent': 4}
+                    'python': {'max_line_length': 120, 'expected_indent': 4},
+                    'javascript': {'max_line_length': 120, 'expected_indent': 2},
+                    'cpp': {'max_line_length': 120, 'expected_indent': 4}
                 }
             
             # 计算规则数量，处理不同类型的值
@@ -95,13 +97,71 @@ class CodeScanner(QObject):
             self.log_updated.emit(f"警告: 加载规则集时出错 - {str(e)}")
             # 创建应急规则集
             self.rules = {
-                'python': {'max_line_length': 100, 'expected_indent': 4},
-                'javascript': {'max_line_length': 100, 'expected_indent': 2},
-                'cpp': {'max_line_length': 100, 'expected_indent': 4}
+                'python': {'max_line_length': 120, 'expected_indent': 4},
+                'javascript': {'max_line_length': 120, 'expected_indent': 2},
+                'cpp': {'max_line_length': 120, 'expected_indent': 4}
             }
             self.log_updated.emit("使用默认应急规则集继续扫描")
     
-    def start(self):
+    def _get_optimal_thread_count(self, file_count):
+        """
+        根据系统性能和文件数量自动调整线程数
+        
+        Args:
+            file_count: 需要扫描的文件数量
+            
+        Returns:
+            int: 最优线程数
+        """
+        try:
+            # 获取CPU核心数
+            cpu_count = os.cpu_count() or 4
+            
+            # 获取当前系统负载（取过去1分钟的平均负载）
+            cpu_load = psutil.cpu_percent(interval=0.1, percpu=False) / 100.0
+            
+            # 获取可用内存百分比
+            mem_available = psutil.virtual_memory().available
+            mem_total = psutil.virtual_memory().total
+            mem_usage = (mem_total - mem_available) / mem_total
+            
+            # 基础线程数 = CPU核心数
+            base_threads = cpu_count
+            
+            # 根据系统负载调整
+            # 如果CPU负载高，减少线程数；如果CPU负载低，增加线程数
+            load_factor = max(0.5, 1.0 - cpu_load)
+            
+            # 根据内存使用调整
+            # 如果内存使用率高，减少线程数
+            mem_factor = max(0.7, 1.0 - mem_usage)
+            
+            # 综合因素计算线程数
+            adjusted_threads = int(base_threads * load_factor * mem_factor * 2)
+            
+            # 根据文件数量调整
+            # 对于少量文件，减少线程数
+            if file_count < adjusted_threads:
+                adjusted_threads = max(2, file_count)
+            
+            # 设置上限和下限
+            min_threads = 2
+            max_threads = min(cpu_count * 4, 32)  # 最多使用CPU核心数的4倍或32个线程
+            
+            optimal_threads = max(min_threads, min(adjusted_threads, max_threads))
+            
+            # 记录调试信息
+            logger.info(f"线程数调整: CPU核心={cpu_count}, 系统负载={cpu_load:.2f}, "
+                       f"内存使用率={mem_usage:.2f}, 文件数={file_count}, "
+                       f"调整后线程数={optimal_threads}")
+            
+            return optimal_threads
+        except Exception as e:
+            # 如果出现任何错误，使用默认值
+            logger.error(f"自动调整线程数失败: {str(e)}")
+            return max(2, os.cpu_count() or 4)
+    
+    def start(self, max_workers=None):
         """开始扫描"""
         self.is_scanning = True
         start_time = time.time()
@@ -112,16 +172,30 @@ class CodeScanner(QObject):
             self.results['total_files'] = len(all_files)
             self.log_updated.emit(f"发现 {len(all_files)} 个文件待扫描")
             
-            # 逐个扫描文件
-            for i, file_path in enumerate(all_files):
-                if not self.is_scanning:  # 检查是否需要停止
-                    self.log_updated.emit("扫描已取消")
-                    break
+            if max_workers is None:
+                # 根据系统性能自动调整线程数
+                max_workers = self._get_optimal_thread_count(len(all_files))
+                self.log_updated.emit(f"根据系统性能自动调整为 {max_workers} 个线程进行并行扫描")
+            
+            # 使用concurrent.futures线程池并行扫描文件
+            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+                # 提交所有扫描任务
+                future_to_file = {executor.submit(self._scan_file, file_path): file_path for file_path in all_files}
                 
-                try:
-                    # 扫描单个文件
-                    self._scan_file(file_path)
-                    self.results['scanned_files'] += 1
+                # 获取任务结果并更新进度
+                for i, future in enumerate(concurrent.futures.as_completed(future_to_file)):
+                    if not self.is_scanning:  # 检查是否需要停止
+                        executor.shutdown(wait=False)
+                        self.log_updated.emit("扫描已取消")
+                        break
+                    
+                    file_path = future_to_file[future]
+                    try:
+                        future.result()  # 获取结果，以便捕获异常
+                        self.results['scanned_files'] += 1
+                    except Exception as e:
+                        self.results['skipped_files'] += 1
+                        self.log_updated.emit(f"跳过文件: {os.path.basename(file_path)} - {str(e)}")
                     
                     # 更新进度
                     progress = int((i + 1) / len(all_files) * 100)
@@ -130,9 +204,6 @@ class CodeScanner(QObject):
                     # 每扫描10个文件更新一次日志
                     if (i + 1) % 10 == 0 or i + 1 == len(all_files):
                         self.log_updated.emit(f"已扫描 {i + 1}/{len(all_files)} 个文件")
-                except Exception as e:
-                    self.results['skipped_files'] += 1
-                    self.log_updated.emit(f"跳过文件: {os.path.basename(file_path)} - {str(e)}")
             
             # 计算扫描时间
             self.results['scan_time'] = time.time() - start_time
@@ -167,8 +238,11 @@ class CodeScanner(QObject):
         all_files = []
         
         # 忽略的目录和文件
-        ignored_dirs = ['.git', '__pycache__', 'node_modules', 'venv', 'env', '.idea', '.vscode', 'build', 'dist']
-        ignored_files = ['.DS_Store']
+        ignored_dirs = {'.git', '__pycache__', 'node_modules', 'venv', 'env', '.idea', '.vscode', 'build', 'dist'}
+        ignored_files = {'.DS_Store'}
+        
+        # 使用集合快速查找
+        supported_extensions = set(self.file_extensions.keys())
         
         for root, dirs, files in os.walk(self.project_path):
             # 跳过忽略的目录
@@ -177,6 +251,12 @@ class CodeScanner(QObject):
             for file in files:
                 # 跳过忽略的文件
                 if file in ignored_files:
+                    continue
+                
+                # 过滤不支持的文件类型
+                _, ext = os.path.splitext(file)
+                ext = ext.lower()
+                if ext not in supported_extensions:
                     continue
                 
                 file_path = os.path.join(root, file)
@@ -255,19 +335,19 @@ class CodeScanner(QObject):
                         if self.ruleset == 'PEP8':
                             # PEP8规则集默认值
                             default_indent = 4
-                            default_line_length = 79
+                            default_line_length = 120
                         elif self.ruleset in ['Airbnb', 'Standard']:
                             # JavaScript相关规则集默认值
                             default_indent = 2
-                            default_line_length = 100
+                            default_line_length = 120
                         elif self.ruleset == 'Google':
                             # Google规则集默认值
                             default_indent = 4
-                            default_line_length = 80
+                            default_line_length = 120
                         else:
                             # 通用默认值
                             default_indent = 4
-                            default_line_length = 100
+                            default_line_length = 120
                         
                         # 根据语言调整缩进
                         if language_key in ['javascript', 'typescript']:
@@ -371,6 +451,10 @@ class CodeScanner(QObject):
                                 if keyword.lower() in full_text:
                                     severity = 'low'
                                     break
+                    
+                    # 确保命名规范违规不会被标记为高风险
+                    if '命名' in description or '命名规范' in description:
+                        severity = 'medium'
                     
                     # 创建格式化的违规对象
                     formatted_violation = {

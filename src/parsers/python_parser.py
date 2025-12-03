@@ -18,9 +18,12 @@ class PythonParser(BaseParser):
             'constant': self.rules.get('constant_naming', '^[A-Z_][A-Z0-9_]*$')  # 全大写加下划线
         }
         
-        self.max_line_length = self.rules.get('max_line_length', 100)
+        self.max_line_length = self.rules.get('max_line_length', 120)
         self.expected_indent = self.rules.get('expected_indent', 4)
         self.min_comment_coverage = self.rules.get('min_comment_coverage', 0.1)
+        # 默认禁用外部工具以提高性能
+        self.use_external_tools = self.rules.get('use_external_tools', False)
+        self.external_tool_timeout = self.rules.get('external_tool_timeout', 5)  # 默认5秒超时
     
     def parse(self, file_content):
         """使用ast模块解析Python代码"""
@@ -257,12 +260,16 @@ class PythonParser(BaseParser):
             }
         return None
     
-    # 重写基类的扫描方法，增加对pycodestyle和pylint的集成支持
+    # 重写基类的扫描方法，增加对pycodestyle和pylint的可选集成支持
     def scan(self, file_path):
-        """扫描Python文件，集成pycodestyle和pylint的检查结果，避免重复报告并确保行号正确"""
+        """扫描Python文件，根据配置选择是否集成pycodestyle和pylint的检查结果"""
         try:
             # 调用基类的扫描方法获取基本违规信息
             violations = super().scan(file_path)
+            
+            # 只有在启用外部工具时才执行额外检查
+            if not self.use_external_tools:
+                return violations
             
             # 记录已经发现的问题，用于去重
             existing_issues = set()
@@ -273,108 +280,143 @@ class PythonParser(BaseParser):
             
             # 尝试使用pycodestyle进行额外检查，并获取详细行号信息
             try:
-                    from pycodestyle import Checker
+                from pycodestyle import Checker
+                import threading
+                import time
+                
+                # 创建一个简单的reporter函数来捕获错误
+                errors = []
+                
+                def pycodestyle_reporter(line_number, offset, text, check):
+                    # 确保我们不会处理None对象
+                    if text is None:
+                        return
                     
-                    # 创建一个简单的reporter函数来捕获错误
-                    errors = []
+                    # 解析错误信息，提取错误代码和描述
+                    error_code = text.split(':')[0].strip() if text else 'Unknown'
+                    error_desc = text.split(':', 1)[1].strip() if ':' in text else text if text else 'Unknown error'
                     
-                    def pycodestyle_reporter(line_number, offset, text, check):
-                        # 确保我们不会处理None对象
-                        if text is None:
-                            return
-                        
-                        # 解析错误信息，提取错误代码和描述
-                        error_code = text.split(':')[0].strip() if text else 'Unknown'
-                        error_desc = text.split(':', 1)[1].strip() if ':' in text else text if text else 'Unknown error'
-                        
-                        # 创建唯一键用于去重
-                        issue_key = f"PEP 8规范违反_{line_number}"
-                        if issue_key not in existing_issues:
-                            errors.append({
-                                'type': f'PEP 8规范违反 ({error_code})',
-                                'message': f'{error_desc}',
-                                'line': line_number
-                            })
-                            existing_issues.add(issue_key)
+                    # 创建唯一键用于去重
+                    issue_key = f"PEP 8规范违反_{line_number}"
+                    if issue_key not in existing_issues:
+                        errors.append({
+                            'type': f'PEP 8规范违反 ({error_code})',
+                            'message': f'{error_desc}',
+                            'line': line_number
+                        })
+                        existing_issues.add(issue_key)
+                
+                # 创建一个简单的reporter类
+                class SimpleReporter:
+                    def __init__(self):
+                        self.errors = []
                     
-                    # 创建一个简单的reporter类
-                    class SimpleReporter:
-                        def __init__(self):
-                            self.errors = []
-                        
-                        def error(self, line_number, offset, text, check):
-                            # 调用我们的reporter函数
-                            pycodestyle_reporter(line_number, offset, text, check)
-                        
-                        # 确保这个类可以被调用
-                        def __call__(self, *args, **kwargs):
-                            pass
+                    def error(self, line_number, offset, text, check):
+                        # 调用我们的reporter函数
+                        pycodestyle_reporter(line_number, offset, text, check)
                     
-                    # 使用pycodestyle检查文件
+                    # 确保这个类可以被调用
+                    def __call__(self, *args, **kwargs):
+                        pass
+                
+                # 定义pycodestyle检查函数，用于多线程执行
+                def run_pycodestyle_check():
                     try:
                         reporter = SimpleReporter()
                         checker = Checker(file_path, reporter=reporter)
-                        # 调用check_all方法，但处理可能的异常
-                        try:
-                            checker.check_all()
-                        except Exception:
-                            # 忽略check_all过程中可能出现的任何错误
-                            pass
-                        
-                        # 添加pycodestyle发现的问题到违规列表
-                        violations.extend(errors)
+                        checker.check_all()
+                        return True
                     except Exception:
-                        # 忽略整个pycodestyle检查过程中可能出现的任何错误
-                        pass
+                        # 忽略pycodestyle检查过程中可能出现的任何错误
+                        return False
+                
+                # 使用线程执行pycodestyle检查，防止超时
+                pycodestyle_thread = threading.Thread(target=run_pycodestyle_check)
+                pycodestyle_thread.daemon = True
+                pycodestyle_thread.start()
+                pycodestyle_thread.join(self.external_tool_timeout)
+                
+                # 添加pycodestyle发现的问题到违规列表
+                if errors:
+                    violations.extend(errors)
                 
             except ImportError:
                 # pycodestyle未安装，跳过这部分检查
                 pass
+            except Exception as e:
+                # 忽略pycodestyle检查过程中的任何错误
+                pass
             
-            # 尝试使用pylint进行额外检查
+            # 尝试使用pylint进行额外检查（仅在pycodestyle检查通过且有剩余时间时）
             try:
                 from pylint.lint import Run
                 from pylint.reporters.text import TextReporter
                 import io
+                import threading
+                import time
                 
-                # 捕获pylint的输出
-                output_stream = io.StringIO()
-                reporter = TextReporter(output_stream)
+                # 定义pylint检查函数，用于多线程执行
+                def run_pylint_check():
+                    try:
+                        # 捕获pylint的输出
+                        output_stream = io.StringIO()
+                        reporter = TextReporter(output_stream)
+                        
+                        # 运行pylint检查，使用更轻量的配置
+                        Run([file_path, '--output-format=text', '--reports=n', '--enable=errors,warnings'], 
+                            reporter=reporter, exit=False)
+                        output = output_stream.getvalue()
+                        
+                        # 解析输出，提取详细错误信息
+                        pylint_errors = []
+                        lines = output.split('\n')
+                        for line in lines:
+                            if ':' in line and any(code in line for code in ['C', 'R', 'W', 'E', 'F']):
+                                # 尝试解析行号和错误信息
+                                try:
+                                    parts = line.split(':')
+                                    if len(parts) >= 4:
+                                        line_number = int(parts[1])
+                                        error_type = parts[2].strip()
+                                        error_msg = ':'.join(parts[3:]).strip()
+                                        
+                                        # 创建唯一键用于去重
+                                        issue_key = f"Pylint检查问题_{line_number}"
+                                        if issue_key not in existing_issues:
+                                            pylint_errors.append({
+                                                'type': f'Pylint检查问题 ({error_type})',
+                                                'message': error_msg,
+                                                'line': line_number
+                                            })
+                                            existing_issues.add(issue_key)
+                                except (ValueError, IndexError):
+                                    # 解析失败，跳过
+                                    continue
+                        return pylint_errors
+                    except Exception:
+                        # 忽略pylint检查过程中可能出现的任何错误
+                        return []
                 
-                # 运行pylint检查
-                try:
-                    Run([file_path, '--output-format=text', '--reports=n'], reporter=reporter, exit=False)
-                    output = output_stream.getvalue()
-                    
-                    # 解析输出，提取详细错误信息
-                    lines = output.split('\n')
-                    for line in lines:
-                        if ':' in line and any(code in line for code in ['C', 'R', 'W', 'E', 'F']):
-                            # 尝试解析行号和错误信息
-                            try:
-                                parts = line.split(':')
-                                if len(parts) >= 4:
-                                    line_number = int(parts[1])
-                                    error_type = parts[2].strip()
-                                    error_msg = ':'.join(parts[3:]).strip()
-                                    
-                                    # 创建唯一键用于去重
-                                    issue_key = f"Pylint检查问题_{line_number}"
-                                    if issue_key not in existing_issues:
-                                        violations.append({
-                                            'type': f'Pylint检查问题 ({error_type})',
-                                            'message': error_msg,
-                                            'line': line_number
-                                        })
-                                        existing_issues.add(issue_key)
-                            except (ValueError, IndexError):
-                                # 解析失败，跳过
-                                continue
-                except Exception:
-                    # pylint执行出错，跳过
+                # 使用线程执行pylint检查，防止超时
+                pylint_thread = threading.Thread(target=run_pylint_check)
+                pylint_thread.daemon = True
+                pylint_thread.start()
+                pylint_thread.join(self.external_tool_timeout)
+                
+                # 添加pylint发现的问题到违规列表
+                if pylint_thread.is_alive():
+                    # 超时，不使用pylint结果
                     pass
+                else:
+                    # 获取pylint检查结果
+                    pylint_errors = run_pylint_check()
+                    violations.extend(pylint_errors)
+                
             except ImportError:
                 # pylint未安装，跳过这部分检查
+                pass
+            except Exception as e:
+                # 忽略pylint检查过程中的任何错误
                 pass
             
             return violations

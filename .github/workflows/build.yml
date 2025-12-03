@@ -129,7 +129,9 @@ jobs:
               "--hidden-import", "weasyprint.fonts",
               "--hidden-import", "weasyprint.layout",
               "--hidden-import", "weasyprint.text",
-              "--hidden-import", "weasyprint.urls"
+              "--hidden-import", "weasyprint.urls",
+              # 系统性能监控依赖
+              "--hidden-import", "psutil"
           ]
           
           # 添加平台特定选项

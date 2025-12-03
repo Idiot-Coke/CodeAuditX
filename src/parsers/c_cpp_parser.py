@@ -23,7 +23,7 @@ class CCppParser(BaseParser):
             'constant': self.rules.get('constant_naming', '^[A-Z_][A-Z0-9_]*$')  # 全大写加下划线
         }
         
-        self.max_line_length = self.rules.get('max_line_length', 100)
+        self.max_line_length = self.rules.get('max_line_length', 120)
         self.expected_indent = self.rules.get('expected_indent', 4)
         self.min_comment_coverage = self.rules.get('min_comment_coverage', 0.1)
     
