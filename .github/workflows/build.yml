@@ -44,40 +44,37 @@ jobs:
       - name: Install system dependencies (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          # 使用chocolatey安装GTK3运行时，这是Windows环境下更可靠的包管理工具
-          Write-Output "安装chocolatey..."
-          Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+          # 下载64位GTK3运行时
+          $gtk_url = "https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer/releases/download/2023-12-29/gtk3-runtime-3.24.37-2023-12-29-ts-win64.exe"
+          $gtk_exe = "gtk3-runtime.exe"
+          Invoke-WebRequest -Uri $gtk_url -OutFile $gtk_exe
           
-          # 使用chocolatey安装GTK3运行时
-          Write-Output "使用chocolatey安装GTK3运行时..."
-          choco install gtk-runtime -y
+          # 安装GTK3运行时
+          Start-Process -FilePath $gtk_exe -ArgumentList "/S" -Wait
           
-          # 验证安装 - 检查可能的安装路径
-          $possiblePaths = @(
-            "C:\Program Files\GTK3-Runtime Win64\bin",
-            "C:\Program Files (x86)\GTK-Runtime\bin",
-            "C:\Program Files\GTK-Runtime\bin"
-          )
+          # 设置GTK3路径
+          $gtk_path = "C:\Program Files\GTK3-Runtime Win64\bin"
+          echo "GTK3_PATH=$gtk_path" >> $env:GITHUB_ENV
+          echo "PATH=$env:PATH;$gtk_path" >> $env:GITHUB_ENV
           
-          $gtkPath = $null
-          foreach ($path in $possiblePaths) {
-            if (Test-Path "$path\gobject-2.0-0.dll") {
-              $gtkPath = $path
-              break
-            }
+          # 验证安装
+          if (Test-Path $gtk_path) {
+            echo "GTK3运行时安装在: $gtk_path"
+            ls $gtk_path | Where-Object { $_.Name -like "gobject*" } | Format-Table -Name
+          } else {
+            echo "GTK3运行时安装路径不存在: $gtk_path"
+            # 尝试查找实际安装路径
+            Get-ChildItem -Path "C:\" -Recurse -Filter "gobject-2.0-0.dll" -ErrorAction SilentlyContinue | Format-Table -Path
           }
           
-          if ($gtkPath) {
-            Write-Output "GTK3运行时安装成功! 路径: $gtkPath"
-            $env:PATH += ";$gtkPath"
-            # 打印PATH以验证
-            Write-Output "当前PATH: $env:PATH"
-          } else {
-            Write-Error "GTK3运行时安装失败! 无法找到gobject-2.0-0.dll"
-            # 列出可能的GTK相关路径
-            Write-Output "搜索可能的GTK相关文件..."
-            Get-ChildItem -Path "C:\Program Files*" -Name "gobject*.dll" -Recurse -ErrorAction SilentlyContinue
-            exit 1
+          # 直接复制关键DLL到当前目录（作为备用）
+          if (Test-Path $gtk_path) {
+            Copy-Item -Path "$gtk_path\gobject-2.0-0.dll" -Destination "." -ErrorAction SilentlyContinue
+            Copy-Item -Path "$gtk_path\glib-2.0-0.dll" -Destination "." -ErrorAction SilentlyContinue
+            Copy-Item -Path "$gtk_path\gmodule-2.0-0.dll" -Destination "." -ErrorAction SilentlyContinue
+            Copy-Item -Path "$gtk_path\gthread-2.0-0.dll" -Destination "." -ErrorAction SilentlyContinue
+            echo "已复制关键GTK3 DLL到当前目录"
+            ls | Where-Object { $_.Name -like "*.dll" } | Format-Table -Name
           }
         shell: pwsh
 
