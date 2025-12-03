@@ -41,6 +41,23 @@ jobs:
         run: |
           brew install cairo pango gdk-pixbuf libffi
 
+      - name: Install system dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          # 下载并安装GTK3运行时
+          Invoke-WebRequest -Uri "https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer/releases/download/2023-12-29/gtk3-runtime-3.24.37-2023-12-29-ts-win64.exe" -OutFile "gtk3-runtime.exe"
+          Start-Process -FilePath "gtk3-runtime.exe" -ArgumentList "/S" -Wait
+          # 将GTK3安装路径添加到PATH环境变量
+          $env:PATH += ";C:\Program Files\GTK3-Runtime Win64\bin"
+          # 验证安装
+          if (Test-Path "C:\Program Files\GTK3-Runtime Win64\bin\gobject-2.0-0.dll") {
+            Write-Output "GTK3 Runtime installed successfully!"
+          } else {
+            Write-Error "GTK3 Runtime installation failed!"
+            exit 1
+          }
+        shell: pwsh
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -132,6 +149,28 @@ jobs:
               cmd.extend(["--hidden-import", "PyQt5.QtSvg"])
               # Windows可能需要额外的字体支持
               cmd.extend(["--hidden-import", "weasyprint.fonts"])
+              # 添加GObject和GTK相关的隐藏导入
+              cmd.extend(["--hidden-import", "gi"])
+              cmd.extend(["--hidden-import", "gi.repository"])
+              cmd.extend(["--hidden-import", "gi.repository.GObject"])
+              cmd.extend(["--hidden-import", "gi.repository.Gio"])
+              cmd.extend(["--hidden-import", "gi.repository.GLib"])
+              cmd.extend(["--hidden-import", "gi.repository.Gtk"])
+              cmd.extend(["--hidden-import", "gi.repository.Pango"])
+              cmd.extend(["--hidden-import", "gi.repository.Cairo"])
+              cmd.extend(["--hidden-import", "gi.repository.Pixbuf"])
+              # 添加Cairo相关的隐藏导入
+              cmd.extend(["--hidden-import", "cairo"])
+              cmd.extend(["--hidden-import", "cairocffi"])
+              # 手动包含关键DLL文件
+              gtk_bin_path = "C:\\Program Files\\GTK3-Runtime Win64\\bin"
+              for dll in ["gobject-2.0-0.dll", "glib-2.0-0.dll", "gmodule-2.0-0.dll", 
+                         "gthread-2.0-0.dll", "gdk_pixbuf-2.0-0.dll", "cairo-2.dll", 
+                         "pango-1.0-0.dll", "pangocairo-1.0-0.dll", "pangoft2-1.0-0.dll", 
+                         "pangowin32-1.0-0.dll", "freetype6.dll", "fontconfig-1.dll"]:
+                  dll_path = os.path.join(gtk_bin_path, dll)
+                  if os.path.exists(dll_path):
+                      cmd.extend(["--add-binary", f"{dll_path}:."])
               # Windows不再需要win-private-assemblies参数（PyInstaller 6.0+已移除）
               
           cmd.extend(extras + [entry])
