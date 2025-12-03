@@ -52,18 +52,30 @@ hiddenimports = [
     "weasyprint.text",
     "weasyprint.urls",
     "weasyprint.pdf",
-    # 添加GObject相关的隐藏导入
+    # 增强GObject相关的隐藏导入
     "gi",
     "gi.repository",
     "gi.repository.GObject",
     "gi.repository.Gio",
     "gi.repository.GLib",
+    "gi.repository.Cairo",
+    "gi.repository.Pango",
+    "gi.repository.PangoCairo",
+    "gi.repository.GdkPixbuf",
+    "gi.repository.Gdk",
     # 添加WeasyPrint的其他依赖
     "pydyf",
     "cssselect2",
     "html5lib",
     "cairo",
-    "cairocffi"
+    "cairocffi",
+    "cairosvg",
+    "fontTools",
+    "PIL",
+    "tinycss2",
+    "webencodings",
+    "lxml",
+    "cssutils"
 ]
 
 # 收集子模块
@@ -82,28 +94,75 @@ def get_gobject_binaries():
     """尝试获取GObject相关的二进制文件"""
     import os
     import sys
-    binaries = []
-    # 检查常见的GTK/GObject安装路径
-    possible_paths = [
-        os.path.join(sys.base_prefix, 'Library', 'bin'),
-        os.path.join(os.environ.get('ProgramFiles', ''), 'GTK3-Runtime Win64', 'bin'),
-        os.path.join(os.environ.get('ProgramFiles(x86)', ''), 'GTK3-Runtime Win32', 'bin')
-    ]
+    import subprocess
     
-    # 关键的GObject DLLs
+    binaries = []
+    # 关键的GTK/GObject DLLs列表，包含更多必要的依赖
     critical_dlls = [
+        # GObject核心DLLs
         'gobject-2.0-0.dll',
         'glib-2.0-0.dll',
         'gmodule-2.0-0.dll',
-        'gthread-2.0-0.dll'
+        'gthread-2.0-0.dll',
+        # Cairo相关DLLs
+        'cairo-2.dll',
+        'cairo-gobject-2.dll',
+        # Pango相关DLLs
+        'pango-1.0-0.dll',
+        'pangocairo-1.0-0.dll',
+        'pangoft2-1.0-0.dll',
+        'pangowin32-1.0-0.dll',
+        # Harfbuzz相关DLLs
+        'harfbuzz.dll',
+        # GTK3相关DLLs
+        'gdk-3-0.dll',
+        'gdk_pixbuf-2.0-0.dll',
+        'gtk-3-0.dll',
+        # 其他必要的依赖
+        'freetype6.dll',
+        'libpng16-16.dll',
+        'zlib1.dll',
+        'libxml2-2.dll',
+        'libxslt-1.dll'
     ]
     
+    # 检查常见的GTK/GObject安装路径
+    possible_paths = [
+        # Anaconda/Miniconda安装路径
+        os.path.join(sys.base_prefix, 'Library', 'bin'),
+        # 标准GTK3安装路径
+        os.path.join(os.environ.get('ProgramFiles', ''), 'GTK3-Runtime Win64', 'bin'),
+        os.path.join(os.environ.get('ProgramFiles(x86)', ''), 'GTK3-Runtime Win32', 'bin'),
+        # Chocolatey安装路径
+        os.path.join(os.environ.get('ProgramData', ''), 'chocolatey', 'lib', 'gtk-runtime', 'tools', 'bin'),
+        # 环境变量中的PATH路径
+        *os.environ.get('PATH', '').split(';')
+    ]
+    
+    # 去重并过滤存在的路径
+    possible_paths = list(set([path for path in possible_paths if os.path.exists(path) and os.path.isdir(path)]))
+    
+    # 遍历所有可能的路径，查找关键DLLs
     for path in possible_paths:
-        if os.path.exists(path):
-            for dll in critical_dlls:
-                dll_path = os.path.join(path, dll)
-                if os.path.exists(dll_path):
-                    binaries.append((dll_path, '.'))
+        for dll in critical_dlls:
+            dll_path = os.path.join(path, dll)
+            if os.path.exists(dll_path) and (dll_path, '.') not in binaries:
+                binaries.append((dll_path, '.'))
+    
+    # 如果没有找到足够的DLLs，尝试使用where命令查找
+    if len(binaries) < len(critical_dlls) // 2:
+        print("尝试使用where命令查找DLLs...")
+        for dll in critical_dlls:
+            try:
+                result = subprocess.run(['where', dll], capture_output=True, text=True, check=True)
+                if result.stdout.strip():
+                    dll_path = result.stdout.strip().split('\n')[0]
+                    if (dll_path, '.') not in binaries:
+                        binaries.append((dll_path, '.'))
+            except subprocess.CalledProcessError:
+                continue
+    
+    print(f"找到{len(binaries)}个GTK/GObject相关DLLs")
     return binaries
 
 # 获取GObject二进制文件
