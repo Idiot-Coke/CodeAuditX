@@ -48,19 +48,31 @@ jobs:
           Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
           # 使用Chocolatey安装GTK3和相关依赖
           choco install -y gtk-runtime
-          choco install -y libglib2.0-0
-          choco install -y libcairo2
-          choco install -y libpango1.0-0
-          # 获取GTK3安装路径
-          $gtkPath = (Get-Command gtk3-demo).Source | Split-Path -Parent
-          Write-Host "GTK3 installed at: $gtkPath"
+          # 设置GTK3路径（默认安装位置）
+          $gtkPath = "C:\Program Files\GTK3-Runtime Win64\bin"
+          # 验证GTK3安装位置
+          if (!(Test-Path $gtkPath)) {
+              # 尝试64位路径
+              $gtkPath64 = "C:\Program Files (x86)\GTK3-Runtime Win64\bin"
+              if (Test-Path $gtkPath64) {
+                  $gtkPath = $gtkPath64
+              } else {
+                  Write-Host "Warning: GTK3 path not found at default locations"
+              }
+          }
+          Write-Host "Using GTK3 path: $gtkPath"
           # 设置环境变量
           echo "GTK3_PATH=$gtkPath" >> $env:GITHUB_ENV
           echo "PATH=$env:PATH;$gtkPath" >> $env:GITHUB_ENV
           # 验证DLL存在
-          Get-ChildItem -Path $gtkPath -Filter "gobject*.dll"
-          Get-ChildItem -Path $gtkPath -Filter "glib*.dll"
-          Get-ChildItem -Path $gtkPath -Filter "cairo*.dll"
+          if (Test-Path $gtkPath) {
+              Get-ChildItem -Path $gtkPath -Filter "gobject*.dll"
+              Get-ChildItem -Path $gtkPath -Filter "glib*.dll"
+              Get-ChildItem -Path $gtkPath -Filter "cairo*.dll"
+              Get-ChildItem -Path $gtkPath -Filter "pango*.dll"
+          } else {
+              Write-Host "Error: GTK3 runtime not found!"
+          }
         shell: pwsh
 
       - name: Install dependencies
