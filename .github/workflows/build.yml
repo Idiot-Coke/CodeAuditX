@@ -52,12 +52,31 @@ jobs:
           Write-Output "使用chocolatey安装GTK3运行时..."
           choco install gtk-runtime -y
           
-          # 验证安装
-          if (Test-Path "C:\Program Files\GTK3-Runtime Win64\bin\gobject-2.0-0.dll") {
-            Write-Output "GTK3运行时安装成功!"
-            $env:PATH += ";C:\Program Files\GTK3-Runtime Win64\bin"
+          # 验证安装 - 检查可能的安装路径
+          $possiblePaths = @(
+            "C:\Program Files\GTK3-Runtime Win64\bin",
+            "C:\Program Files (x86)\GTK-Runtime\bin",
+            "C:\Program Files\GTK-Runtime\bin"
+          )
+          
+          $gtkPath = $null
+          foreach ($path in $possiblePaths) {
+            if (Test-Path "$path\gobject-2.0-0.dll") {
+              $gtkPath = $path
+              break
+            }
+          }
+          
+          if ($gtkPath) {
+            Write-Output "GTK3运行时安装成功! 路径: $gtkPath"
+            $env:PATH += ";$gtkPath"
+            # 打印PATH以验证
+            Write-Output "当前PATH: $env:PATH"
           } else {
-            Write-Error "GTK3运行时安装失败!"
+            Write-Error "GTK3运行时安装失败! 无法找到gobject-2.0-0.dll"
+            # 列出可能的GTK相关路径
+            Write-Output "搜索可能的GTK相关文件..."
+            Get-ChildItem -Path "C:\Program Files*" -Name "gobject*.dll" -Recurse -ErrorAction SilentlyContinue
             exit 1
           }
         shell: pwsh
