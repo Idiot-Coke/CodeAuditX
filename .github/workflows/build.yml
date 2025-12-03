@@ -44,38 +44,23 @@ jobs:
       - name: Install system dependencies (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          # 下载64位GTK3运行时
-          $gtk_url = "https://github.com/tschoonj/GTK-for-Windows-Runtime-Environment-Installer/releases/download/2023-12-29/gtk3-runtime-3.24.37-2023-12-29-ts-win64.exe"
-          $gtk_exe = "gtk3-runtime.exe"
-          Invoke-WebRequest -Uri $gtk_url -OutFile $gtk_exe
-          
-          # 安装GTK3运行时
-          Start-Process -FilePath $gtk_exe -ArgumentList "/S" -Wait
-          
-          # 设置GTK3路径
-          $gtk_path = "C:\Program Files\GTK3-Runtime Win64\bin"
-          echo "GTK3_PATH=$gtk_path" >> $env:GITHUB_ENV
-          echo "PATH=$env:PATH;$gtk_path" >> $env:GITHUB_ENV
-          
-          # 验证安装
-          if (Test-Path $gtk_path) {
-            echo "GTK3运行时安装在: $gtk_path"
-            ls $gtk_path | Where-Object { $_.Name -like "gobject*" } | Format-Table -Name
-          } else {
-            echo "GTK3运行时安装路径不存在: $gtk_path"
-            # 尝试查找实际安装路径
-            Get-ChildItem -Path "C:\" -Recurse -Filter "gobject-2.0-0.dll" -ErrorAction SilentlyContinue | Format-Table -Path
-          }
-          
-          # 直接复制关键DLL到当前目录（作为备用）
-          if (Test-Path $gtk_path) {
-            Copy-Item -Path "$gtk_path\gobject-2.0-0.dll" -Destination "." -ErrorAction SilentlyContinue
-            Copy-Item -Path "$gtk_path\glib-2.0-0.dll" -Destination "." -ErrorAction SilentlyContinue
-            Copy-Item -Path "$gtk_path\gmodule-2.0-0.dll" -Destination "." -ErrorAction SilentlyContinue
-            Copy-Item -Path "$gtk_path\gthread-2.0-0.dll" -Destination "." -ErrorAction SilentlyContinue
-            echo "已复制关键GTK3 DLL到当前目录"
-            ls | Where-Object { $_.Name -like "*.dll" } | Format-Table -Name
-          }
+          # 安装Chocolatey（如果尚未安装）
+          Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+          # 使用Chocolatey安装GTK3和相关依赖
+          choco install -y gtk-runtime
+          choco install -y libglib2.0-0
+          choco install -y libcairo2
+          choco install -y libpango1.0-0
+          # 获取GTK3安装路径
+          $gtkPath = (Get-Command gtk3-demo).Source | Split-Path -Parent
+          Write-Host "GTK3 installed at: $gtkPath"
+          # 设置环境变量
+          echo "GTK3_PATH=$gtkPath" >> $env:GITHUB_ENV
+          echo "PATH=$env:PATH;$gtkPath" >> $env:GITHUB_ENV
+          # 验证DLL存在
+          Get-ChildItem -Path $gtkPath -Filter "gobject*.dll"
+          Get-ChildItem -Path $gtkPath -Filter "glib*.dll"
+          Get-ChildItem -Path $gtkPath -Filter "cairo*.dll"
         shell: pwsh
 
       - name: Install dependencies
