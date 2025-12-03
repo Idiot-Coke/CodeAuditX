@@ -83,7 +83,7 @@ if exist "%SPEC_FILE%" (
 goto build_complete
 
 :fallback_build
-REM 备用打包命令
+REM 备用打包命令 - 增强了GObject和WeasyPrint依赖
 pyinstaller ^
     --noconfirm ^
     --windowed ^
@@ -100,17 +100,49 @@ pyinstaller ^
     --hidden-import src.parsers.java_parser ^
     --hidden-import weasyprint ^
     --hidden-import weasyprint.css ^
+    --hidden-import weasyprint.css.computed_values ^
+    --hidden-import weasyprint.css.properties ^
+    --hidden-import weasyprint.css.validation ^
     --hidden-import weasyprint.html ^
+    --hidden-import weasyprint.html.clean ^
+    --hidden-import weasyprint.html.document ^
+    --hidden-import weasyprint.html.html5lib_adapter ^
     --hidden-import weasyprint.layout ^
+    --hidden-import weasyprint.layout.backgrounds ^
+    --hidden-import weasyprint.layout.boxes ^
+    --hidden-import weasyprint.layout.collapsing ^
+    --hidden-import weasyprint.layout.context ^
+    --hidden-import weasyprint.layout.floats ^
+    --hidden-import weasyprint.layout.inlines ^
+    --hidden-import weasyprint.layout.page ^
+    --hidden-import weasyprint.layout.blocks ^
+    --hidden-import weasyprint.presentational_hints ^
+    --hidden-import weasyprint.images ^
+    --hidden-import weasyprint.text ^
+    --hidden-import weasyprint.urls ^
     --hidden-import weasyprint.pdf ^
     --hidden-import gi ^
     --hidden-import gi.repository ^
     --hidden-import gi.repository.GObject ^
     --hidden-import gi.repository.Gio ^
     --hidden-import gi.repository.GLib ^
+    --hidden-import gi.repository.Cairo ^
+    --hidden-import gi.repository.Pango ^
+    --hidden-import gi.repository.PangoCairo ^
+    --hidden-import gi.repository.GdkPixbuf ^
+    --hidden-import gi.repository.Gdk ^
     --hidden-import pydyf ^
     --hidden-import cssselect2 ^
     --hidden-import html5lib ^
+    --hidden-import cairo ^
+    --hidden-import cairocffi ^
+    --hidden-import cairosvg ^
+    --hidden-import fontTools ^
+    --hidden-import PIL ^
+    --hidden-import tinycss2 ^
+    --hidden-import webencodings ^
+    --hidden-import lxml ^
+    --hidden-import cssutils ^
     --add-data "src/core;core" ^
     --add-data "src/parsers;parsers" ^
     --add-data "src/rules;rules" ^
