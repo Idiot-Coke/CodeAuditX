@@ -18,14 +18,23 @@ def find_gtk_dlls():
     
     # 尝试查找GTK3的安装路径
     possible_paths = [
+        # Chocolatey安装路径（首选）
+        os.path.join(os.environ.get("ProgramData", ""), "chocolatey", "lib", "gtk-runtime", "tools", "bin"),
+        os.path.join(os.environ.get("ChocolateyInstall", ""), "lib", "gtk-runtime", "tools", "bin"),
         # GitHub Actions环境下的GTK3安装路径
         "C:\\Program Files\\GTK3-Runtime Win64\\bin",
         "C:\\Program Files (x86)\\GTK3-Runtime Win32\\bin",
         # Anaconda/Miniconda路径
         os.path.join(sys.base_prefix, "Library", "bin"),
-        # Chocolatey安装路径
-        os.path.join(os.environ.get("ProgramData", ""), "chocolatey", "lib", "gtk-runtime", "tools", "bin")
+        # 环境变量中的路径
+        *os.environ.get("PATH", "").split(os.pathsep)
     ]
+    
+    # 去重并检查路径是否存在
+    unique_paths = []
+    for path in possible_paths:
+        if path and path not in unique_paths and os.path.exists(path) and os.path.isdir(path):
+            unique_paths.append(path)
     
     # 关键DLLs
     critical_dlls = [
@@ -52,13 +61,31 @@ def find_gtk_dlls():
     
     found_dlls = []
     
-    for path in possible_paths:
-        if os.path.exists(path) and os.path.isdir(path):
-            for dll in critical_dlls:
-                dll_path = os.path.join(path, dll)
-                if os.path.exists(dll_path):
-                    found_dlls.append((dll_path, '.'))
+    for path in unique_paths:
+        print(f"钩子：检查GTK3 DLLs在: {path}")
+        for dll in critical_dlls:
+            dll_path = os.path.join(path, dll)
+            if os.path.exists(dll_path):
+                found_dlls.append((dll_path, '.'))
+                print(f"钩子：找到DLL: {dll}")
     
+    # 如果没有找到DLLs，尝试使用where命令搜索
+    if not found_dlls:
+        print("钩子：在所有已知路径中未找到GTK3 DLLs，尝试使用where命令搜索...")
+        try:
+            for dll in critical_dlls:
+                try:
+                    result = subprocess.run(["where", dll], capture_output=True, text=True, check=True)
+                    for line in result.stdout.strip().split('\n'):
+                        if line and os.path.exists(line):
+                            found_dlls.append((line, '.'))
+                            print(f"钩子：通过where命令找到DLL: {line}")
+                except:
+                    pass
+        except:
+            pass
+    
+    print(f"钩子：总共找到 {len(found_dlls)} 个GTK3 DLLs")
     return found_dlls
 
 # 查找并添加GTK3 DLLs
