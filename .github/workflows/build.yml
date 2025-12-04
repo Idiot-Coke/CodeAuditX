@@ -42,7 +42,14 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && matrix.arch == 'arm64'
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross libcairo2-dev:arm64 libpango1.0-dev:arm64 libgdk-pixbuf2.0-dev:arm64
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross
+          # 对于Ubuntu Noble，我们使用不同的方法来安装ARM64库
+          sudo apt-get install -y libcairo2-dev libpango1.0-dev libgdk-pixbuf2.0-dev
+          # 添加ARM64架构支持
+          sudo dpkg --add-architecture arm64
+          sudo apt-get update
+          # 安装ARM64版本的依赖库
+          sudo apt-get install -y libcairo2-dev:arm64 libpango1.0-dev:arm64 libgdk-pixbuf2.0-dev:arm64 libffi-dev:arm64
 
       - name: Install system dependencies (macOS)
         if: startsWith(matrix.os, 'macos-')
