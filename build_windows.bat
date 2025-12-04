@@ -121,16 +121,11 @@ pyinstaller ^
     --hidden-import weasyprint.text ^
     --hidden-import weasyprint.urls ^
     --hidden-import weasyprint.pdf ^
-    --hidden-import gi ^
-    --hidden-import gi.repository ^
-    --hidden-import gi.repository.GObject ^
-    --hidden-import gi.repository.Gio ^
-    --hidden-import gi.repository.GLib ^
-    --hidden-import gi.repository.Cairo ^
-    --hidden-import gi.repository.Pango ^
-    --hidden-import gi.repository.PangoCairo ^
-    --hidden-import gi.repository.GdkPixbuf ^
-    --hidden-import gi.repository.Gdk ^
+    --hidden-import PyQt5 ^
+--hidden-import PyQt5.QtCore ^
+--hidden-import PyQt5.QtGui ^
+--hidden-import PyQt5.QtWidgets ^
+--hidden-import PyQt5.QtPrintSupport ^
     --hidden-import pydyf ^
     --hidden-import cssselect2 ^
     --hidden-import html5lib ^

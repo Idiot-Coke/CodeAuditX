@@ -14,29 +14,39 @@ class BaseParser:
         self.supported_extensions = []
         self.language_name = "Unknown"
         
-        # 导入对应的规则集
-        self.rules = self._load_ruleset(ruleset)
+        # 初始化规则为空，稍后在子类初始化后再加载
+        self.rules = {}
         
-        # 如果规则为空，使用默认规则
-        if not self.rules:
-            logger.warning(f"规则集 '{ruleset}' 为空或未找到，使用默认规则")
-            self.rules = self._get_default_rules()
+        # 记录规则集名称，用于后续加载
+        self._ruleset_name = ruleset
     
     def _load_ruleset(self, ruleset_name):
         """加载规则集"""
         try:
             logger.debug(f"尝试加载规则集: {ruleset_name}")
             
-            # 首先尝试直接使用rule_manager.get_rules_for_language获取特定语言的规则
-            # 这样可以确保正确应用规则集和语言的组合
+            # 首先处理语言名称映射
             language_key = self.language_name.lower()
             logger.debug(f"当前解析器语言: {language_key}")
             
-            # 尝试使用get_rules_for_language方法
-            language_rules = rule_manager.get_rules_for_language(ruleset_name, language_key)
+            # 预定义语言名称映射
+            language_mappings = {
+                'c': 'cpp',
+                'typescript': 'javascript',
+                'js': 'javascript',
+                'c++': 'cpp',
+                'javascript/typescript': 'javascript'
+            }
+            
+            # 检查是否需要映射语言名称
+            mapped_lang = language_mappings.get(language_key, language_key)
+            logger.debug(f"映射后的语言: {mapped_lang}")
+            
+            # 尝试使用get_rules_for_language方法，使用映射后的语言
+            language_rules = rule_manager.get_rules_for_language(ruleset_name, mapped_lang)
             
             if language_rules:
-                logger.debug(f"直接从rule_manager获取到{language_key}的规则数量: {len(language_rules)}")
+                logger.debug(f"直接从rule_manager获取到{mapped_lang}的规则数量: {len(language_rules)}")
                 return language_rules
             
             # 如果直接获取失败，尝试通过get_rules_for_ruleset获取整个规则集
@@ -44,26 +54,20 @@ class BaseParser:
             logger.debug(f"从规则管理器获取规则集: {ruleset_name}, 规则集是否存在: {rules is not None}")
             
             if rules and isinstance(rules, dict):
-                # 尝试获取当前语言的规则
-                language_rules = rules.get(language_key, {})
+                # 获取全局规则（排除语言特定规则）
+                global_rules = {k: v for k, v in rules.items() if k not in ['python', 'javascript', 'cpp', 'php', 'go', 'java']}
                 
-                # 如果找不到当前语言的规则，尝试一些可能的映射
-                if not language_rules:
-                    # 特殊处理一些可能的语言名称映射
-                    language_mappings = {
-                        'c': 'cpp',
-                        'typescript': 'javascript',
-                        'js': 'javascript',
-                        'c++': 'cpp'
-                    }
-                    
-                    mapped_lang = language_mappings.get(language_key)
-                    if mapped_lang and mapped_lang in rules:
-                        language_rules = rules.get(mapped_lang, {})
-                        logger.debug(f"使用映射语言 {mapped_lang} 的规则")
+                # 尝试获取映射后语言的规则
+                language_specific_rules = rules.get(mapped_lang, {})
                 
-                logger.debug(f"获取到的{language_key}规则数量: {len(language_rules)}")
-                return language_rules
+                # 合并规则：语言特定规则覆盖全局规则
+                merged_rules = {**global_rules, **language_specific_rules}
+                logger.debug(f"获取到的{mapped_lang}规则数量: {len(merged_rules)}")
+                
+                # 打印获取到的规则，调试用
+                logger.debug(f"获取到的规则详情: {merged_rules}")
+                
+                return merged_rules
             else:
                 logger.warning(f"规则集 '{ruleset_name}' 未返回有效规则")
         except Exception as e:

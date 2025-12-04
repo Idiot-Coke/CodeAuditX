@@ -52,17 +52,12 @@ hiddenimports = [
     "weasyprint.text",
     "weasyprint.urls",
     "weasyprint.pdf",
-    # 增强GObject相关的隐藏导入
-    "gi",
-    "gi.repository",
-    "gi.repository.GObject",
-    "gi.repository.Gio",
-    "gi.repository.GLib",
-    "gi.repository.Cairo",
-    "gi.repository.Pango",
-    "gi.repository.PangoCairo",
-    "gi.repository.GdkPixbuf",
-    "gi.repository.Gdk",
+    # PyQt5相关隐藏导入
+    "PyQt5",
+    "PyQt5.QtCore",
+    "PyQt5.QtGui",
+    "PyQt5.QtWidgets",
+    "PyQt5.QtPrintSupport",
     # 添加WeasyPrint的其他依赖
     "pydyf",
     "cssselect2",
@@ -91,106 +86,9 @@ collect_all = [
     "src.core"
 ]
 
-# Windows平台特定配置
-def get_gobject_binaries():
-    """收集GTK3 DLLs，支持多种安装方式（Chocolatey、标准安装、conda）"""
-    import os
-    import sys
-    import subprocess
-    
-    binaries = []
-    
-    # 关键的GTK/GObject DLLs列表
-    critical_dlls = [
-        'gobject-2.0-0.dll',
-        'glib-2.0-0.dll',
-        'gmodule-2.0-0.dll',
-        'gthread-2.0-0.dll',
-        'cairo-2.dll',
-        'cairo-gobject-2.dll',
-        'pango-1.0-0.dll',
-        'pangocairo-1.0-0.dll',
-        'pangoft2-1.0-0.dll',
-        'pangowin32-1.0-0.dll',
-        'harfbuzz.dll',
-        'gdk-3-0.dll',
-        'gdk_pixbuf-2.0-0.dll',
-        'gtk-3-0.dll',
-        'freetype6.dll',
-        'libpng16-16.dll',
-        'zlib1.dll',
-        'libxml2-2.dll',
-        'libxslt-1.dll'
-    ]
-    
-    # 尝试多种可能的GTK3安装路径
-    # 1. Chocolatey安装路径
-    chocolatey_paths = [
-        os.path.join(os.environ.get("ProgramData", ""), "chocolatey", "lib", "gtk-runtime", "tools", "bin"),
-        os.path.join(os.environ.get("ChocolateyInstall", ""), "lib", "gtk-runtime", "tools", "bin")
-    ]
-    
-    # 2. 标准Windows安装路径
-    standard_paths = [
-        "C:\\Program Files\\GTK3-Runtime Win64\\bin",
-        "C:\\Program Files (x86)\\GTK3-Runtime Win32\\bin"
-    ]
-    
-    # 3. Conda/Anaconda路径
-    conda_paths = [
-        os.path.join(sys.base_prefix, "Library", "bin")
-    ]
-    
-    # 4. 环境变量中的路径
-    env_paths = os.environ.get("PATH", "").split(os.pathsep)
-    
-    # 合并所有可能的路径
-    all_paths = chocolatey_paths + standard_paths + conda_paths + env_paths
-    
-    # 去重并检查路径是否存在
-    unique_paths = []
-    for path in all_paths:
-        if path and path not in unique_paths and os.path.exists(path) and os.path.isdir(path):
-            unique_paths.append(path)
-    
-    # 收集DLLs
-    for path in unique_paths:
-        print(f"检查GTK3 DLLs在: {path}")
-        found_in_path = 0
-        for dll in critical_dlls:
-            dll_path = os.path.join(path, dll)
-            if os.path.exists(dll_path):
-                binaries.append((dll_path, '.'))
-                found_in_path += 1
-        if found_in_path > 0:
-            print(f"  在该路径找到 {found_in_path} 个DLLs")
-    
-    # 如果找到DLLs，直接返回
-    if binaries:
-        print(f"总计找到 {len(binaries)} 个GTK/GObject相关DLLs")
-        return binaries
-    
-    # 如果没有找到任何DLLs，尝试搜索整个系统
-    print("在所有已知路径中未找到GTK3 DLLs，尝试在系统中搜索...")
-    try:
-        # 使用where命令查找DLLs
-        for dll in critical_dlls:
-            try:
-                result = subprocess.run(["where", dll], capture_output=True, text=True, check=True)
-                for line in result.stdout.strip().split('\n'):
-                    if line and os.path.exists(line):
-                        binaries.append((line, '.'))
-                        print(f"  找到: {line}")
-            except:
-                pass
-    except:
-        pass
-    
-    print(f"最终找到 {len(binaries)} 个GTK/GObject相关DLLs")
-    return binaries
-
-# 获取GObject二进制文件
-gobject_binaries = get_gobject_binaries()
+# PyQt5相关的二进制文件会由PyInstaller自动处理
+# 无需手动添加GTK/GObject DLLs，因为项目使用PyQt5而非GTK
+gobject_binaries = []
 
 a = Analysis(['src/main.py'],
              pathex=[],

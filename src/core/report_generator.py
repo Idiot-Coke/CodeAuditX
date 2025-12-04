@@ -7,10 +7,10 @@ import json
 import csv
 import datetime
 from .config_manager import ConfigManager
-# 使用WeasyPrint替代pdfkit
-from weasyprint import HTML, CSS
-# FontConfiguration已在较新版本中移至不同位置或不再需要
-# 如果需要字体配置，现在通常直接从weasyprint导入或不需要显式导入
+# 延迟导入WeasyPrint，避免启动时加载GTK3/GObject依赖
+# WeasyPrint仅在生成PDF报告时需要
+HTML = None
+CSS = None
 
 class ReportGenerator:
     def __init__(self, results, ruleset=None):

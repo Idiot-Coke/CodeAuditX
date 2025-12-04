@@ -14,6 +14,8 @@ jobs:
         include:
           - os: ubuntu-latest
             arch: x86_64
+          - os: ubuntu-latest
+            arch: arm64
           - os: windows-latest
             arch: x86_64
           - os: macos-13
@@ -35,6 +37,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libcairo2 libcairo2-dev libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf2.0-0 libffi-dev libpango1.0-dev libgdk-pixbuf2.0-dev shared-mime-info
+      
+      - name: Install cross-compilation dependencies (Ubuntu ARM64)
+        if: matrix.os == 'ubuntu-latest' && matrix.arch == 'arm64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu libc6-dev-arm64-cross libcairo2-dev:arm64 libpango1.0-dev:arm64 libgdk-pixbuf2.0-dev:arm64
 
       - name: Install system dependencies (macOS)
         if: startsWith(matrix.os, 'macos-')
@@ -83,6 +91,8 @@ jobs:
 
       - name: Build executable
         shell: python
+        env:
+          BUILD_ARCH: ${{ matrix.arch }}
         run: |
           import os, sys, subprocess, pathlib
           print("Checking entry file...")
@@ -94,6 +104,9 @@ jobs:
           else:
               print("ERROR: main.py not found at repo root or src/")
               sys.exit(1)
+          # 获取架构信息
+          build_arch = os.environ.get("BUILD_ARCH", "x86_64")
+          print(f"Building for architecture: {build_arch}")
           # 收集额外目录
           extras = []
           # 添加所有src下的子目录
@@ -104,14 +117,13 @@ jobs:
           if pathlib.Path("config").exists():
               extras.extend(["--add-data", "config:config"])
           
-          # 对于Windows，无需添加wkhtmltopdf相关配置，因为我们现在使用WeasyPrint
           # 构建命令
           cmd = [
               sys.executable, "-m", "PyInstaller",
               "--noconfirm",
               "--onefile",
               "--windowed",
-              "--name", "CodeAuditX",
+              "--name", f"CodeAuditX_{build_arch}",
               "--collect-submodules", "src.rules",
               "--collect-submodules", "src.parsers",
               "--collect-all", "src.core",
@@ -168,28 +180,11 @@ jobs:
               cmd.extend(["--hidden-import", "PyQt5.QtSvg"])
               # Windows可能需要额外的字体支持
               cmd.extend(["--hidden-import", "weasyprint.fonts"])
-              # 添加GObject和GTK相关的隐藏导入
-              cmd.extend(["--hidden-import", "gi"])
-              cmd.extend(["--hidden-import", "gi.repository"])
-              cmd.extend(["--hidden-import", "gi.repository.GObject"])
-              cmd.extend(["--hidden-import", "gi.repository.Gio"])
-              cmd.extend(["--hidden-import", "gi.repository.GLib"])
-              cmd.extend(["--hidden-import", "gi.repository.Gtk"])
-              cmd.extend(["--hidden-import", "gi.repository.Pango"])
-              cmd.extend(["--hidden-import", "gi.repository.Cairo"])
-              cmd.extend(["--hidden-import", "gi.repository.Pixbuf"])
-              # 添加Cairo相关的隐藏导入
-              cmd.extend(["--hidden-import", "cairo"])
-              cmd.extend(["--hidden-import", "cairocffi"])
-              # 手动包含关键DLL文件
-              gtk_bin_path = "C:\\Program Files\\GTK3-Runtime Win64\\bin"
-              for dll in ["gobject-2.0-0.dll", "glib-2.0-0.dll", "gmodule-2.0-0.dll", 
-                         "gthread-2.0-0.dll", "gdk_pixbuf-2.0-0.dll", "cairo-2.dll", 
-                         "pango-1.0-0.dll", "pangocairo-1.0-0.dll", "pangoft2-1.0-0.dll", 
-                         "pangowin32-1.0-0.dll", "freetype6.dll", "fontconfig-1.dll"]:
-                  dll_path = os.path.join(gtk_bin_path, dll)
-                  if os.path.exists(dll_path):
-                      cmd.extend(["--add-binary", f"{dll_path}:."])
+              # 移除不必要的GTK/GObject依赖，因为我们使用延迟导入来处理PDF生成
+              # 添加额外的PyQt5相关隐藏导入以确保GUI功能正常
+              cmd.extend(["--hidden-import", "PyQt5.QtGui"])
+              cmd.extend(["--hidden-import", "PyQt5.QtCore"])
+              cmd.extend(["--hidden-import", "PyQt5.QtWidgets"])
               # Windows不再需要win-private-assemblies参数（PyInstaller 6.0+已移除）
               
           cmd.extend(extras + [entry])

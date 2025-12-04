@@ -17,6 +17,14 @@ class JavascriptParser(BaseParser):
         self.supported_extensions = ['.js', '.jsx', '.ts', '.tsx']
         self.language_name = "JavaScript/TypeScript"
         
+        # 现在语言名称已设置，可以加载规则了
+        self.rules = self._load_ruleset(self._ruleset_name)
+        
+        # 如果规则为空，使用默认规则
+        if not self.rules:
+            logger.warning(f"规则集 '{self._ruleset_name}' 为空或未找到，使用默认规则")
+            self.rules = self._get_default_rules()
+        
         # 根据规则集设置具体的检查规则
         self.naming_patterns = {
             'function': self.rules.get('function_naming', '^(function\s+)?[a-z][a-zA-Z0-9]*$|^(function\s+)?[_$][a-zA-Z0-9]*$'),  # 小驼峰或下划线/美元符号开头

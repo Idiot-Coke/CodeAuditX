@@ -34,7 +34,7 @@ google_rules = {
         "class_naming": r"^[A-Z][a-zA-Z0-9]*$",   # 大驼峰命名法
         "constant_naming": r"^[A-Z_][A-Z0-9_]*$",  # 全大写字母和下划线
         "max_line_length": 120,      # 最大行长度
-        "expected_indent": 4,       # 预期缩进空格数
+        "expected_indent": 4,       # 预期缩进空格数（PEP 8标准）
         "min_comment_coverage": 0.15,  # 最小注释覆盖率(15%)
         "docstring_style": "google",  # Google风格的文档字符串
         "allow_error_naming": True,  # 允许包含Error/ERROR的命名
@@ -47,9 +47,37 @@ google_rules = {
         "class_naming": r"^[A-Z][a-zA-Z0-9]*$",   # 大驼峰命名法
         "constant_naming": r"^[A-Z_][A-Z0-9_]*$",  # 全大写字母和下划线
         "max_line_length": 120,      # 最大行长度
-        "expected_indent": 2,       # 预期缩进空格数
+        "expected_indent": 2,       # 预期缩进空格数（Airbnb/Google标准）
         "min_comment_coverage": 0.1,  # 最小注释覆盖率(10%)
         "semicolon_required": True,  # 要求分号
+        "allow_error_naming": True,  # 允许包含Error/ERROR的命名
+    },
+    
+    # HTML 特定规则
+    "html": {
+        "max_line_length": 120,      # 最大行长度
+        "expected_indent": 2,       # 预期缩进空格数（行业最佳实践）
+        "min_comment_coverage": 0.05,  # 最小注释覆盖率(5%)
+        "allow_error_naming": True,  # 允许包含Error/ERROR的命名
+    },
+    
+    # CSS 特定规则
+    "css": {
+        "max_line_length": 120,      # 最大行长度
+        "expected_indent": 2,       # 预期缩进空格数（行业最佳实践）
+        "min_comment_coverage": 0.05,  # 最小注释覆盖率(5%)
+        "allow_error_naming": True,  # 允许包含Error/ERROR的命名
+    },
+    
+    # Ruby 特定规则
+    "ruby": {
+        "function_naming": r"^[a-z_][a-z0-9_]*$",  # 蛇形命名法
+        "variable_naming": r"^[a-z_][a-z0-9_]*$",  # 蛇形命名法
+        "class_naming": r"^[A-Z][a-zA-Z0-9]*$",   # 大驼峰命名法
+        "constant_naming": r"^[A-Z_][A-Z0-9_]*$",  # 全大写字母和下划线
+        "max_line_length": 120,      # 最大行长度
+        "expected_indent": 2,       # 预期缩进空格数（Ruby社区标准）
+        "min_comment_coverage": 0.1,  # 最小注释覆盖率(10%)
         "allow_error_naming": True,  # 允许包含Error/ERROR的命名
     },
     
@@ -60,7 +88,7 @@ google_rules = {
         "class_naming": r"^[A-Z][a-zA-Z0-9]*$",   # 大驼峰命名法
         "constant_naming": r"^[A-Z_][A-Z0-9_]*$",  # 全大写字母和下划线
         "max_line_length": 120,      # 最大行长度
-        "expected_indent": 4,       # 预期缩进空格数
+        "expected_indent": 4,       # 预期缩进空格数（C++ Core Guidelines）
         "min_comment_coverage": 0.2,  # 最小注释覆盖率(20%)
         "header_guard_style": "include_guard",  # 头文件保护风格
         # 添加一个配置项来明确允许错误相关的命名
@@ -74,7 +102,7 @@ google_rules = {
         "class_naming": r"^[A-Z][a-zA-Z0-9]*$",   # 大驼峰命名法
         "constant_naming": r"^[A-Z_][A-Z0-9_]*$",  # 全大写字母和下划线
         "max_line_length": 120,     # 最大行长度
-        "expected_indent": 4,       # 预期缩进空格数
+        "expected_indent": 4,       # 预期缩进空格数（PSR-12标准）
         "min_comment_coverage": 0.1,  # 最小注释覆盖率(10%)
         "allow_error_naming": True,  # 允许包含Error/ERROR的命名
     },
@@ -86,7 +114,7 @@ google_rules = {
         "type_naming": r"^[A-Z][a-zA-Z0-9]*$",      # 大驼峰命名法
         "constant_naming": r"^[A-Z_][A-Z0-9_]*$",  # 全大写字母和下划线
         "max_line_length": 120,     # 最大行长度
-        "expected_indent": 4,       # 预期缩进空格数
+        "expected_indent": 4,       # 预期缩进空格数（Go官方标准）
         "min_comment_coverage": 0.1,  # 最小注释覆盖率(10%)
         "allow_error_naming": True,  # 允许包含Error/ERROR的命名
     },
@@ -98,7 +126,7 @@ google_rules = {
         "class_naming": r"^[A-Z][a-zA-Z0-9]*$",   # 大驼峰命名法
         "constant_naming": r"^[A-Z_][A-Z0-9_]*$",  # 全大写字母和下划线
         "max_line_length": 120,     # 最大行长度
-        "expected_indent": 4,       # 预期缩进空格数
+        "expected_indent": 4,       # 预期缩进空格数（Oracle标准）
         "min_comment_coverage": 0.15,  # 最小注释覆盖率(15%)
         "allow_error_naming": True,  # 允许包含Error/ERROR的命名
     },
@@ -137,14 +165,40 @@ airbnb_rules = {
         "class_naming": r"^[A-Z][a-zA-Z0-9]*$",   # 大驼峰命名法
         "constant_naming": r"^[A-Z_][A-Z0-9_]*$",  # 全大写字母和下划线
         "max_line_length": 120,     # 最大行长度
-        "expected_indent": 2,       # 预期缩进空格数
+        "expected_indent": 2,       # 预期缩进空格数（Airbnb标准）
         "min_comment_coverage": 0.1,  # 最小注释覆盖率(10%)
         "semicolon_required": False,  # 不要求分号
         "arrow_function_preference": "always",  # 优先使用箭头函数
         "allow_error_naming": True,  # 允许包含Error/ERROR的命名
     },
     
-    # 其他语言规则沿用全局规则
+    # HTML 特定规则
+    "html": {
+        "max_line_length": 120,      # 最大行长度
+        "expected_indent": 2,       # 预期缩进空格数（行业最佳实践）
+        "min_comment_coverage": 0.05,  # 最小注释覆盖率(5%)
+        "allow_error_naming": True,  # 允许包含Error/ERROR的命名
+    },
+    
+    # CSS 特定规则
+    "css": {
+        "max_line_length": 120,      # 最大行长度
+        "expected_indent": 2,       # 预期缩进空格数（行业最佳实践）
+        "min_comment_coverage": 0.05,  # 最小注释覆盖率(5%)
+        "allow_error_naming": True,  # 允许包含Error/ERROR的命名
+    },
+    
+    # Ruby 特定规则
+    "ruby": {
+        "function_naming": r"^[a-z_][a-z0-9_]*$",  # 蛇形命名法
+        "variable_naming": r"^[a-z_][a-z0-9_]*$",  # 蛇形命名法
+        "class_naming": r"^[A-Z][a-zA-Z0-9]*$",   # 大驼峰命名法
+        "constant_naming": r"^[A-Z_][A-Z0-9_]*$",  # 全大写字母和下划线
+        "max_line_length": 120,      # 最大行长度
+        "expected_indent": 2,       # 预期缩进空格数（Ruby社区标准）
+        "min_comment_coverage": 0.1,  # 最小注释覆盖率(10%)
+        "allow_error_naming": True,  # 允许包含Error/ERROR的命名
+    },
 }
 
 # Standard 规则集 - 主要适用于 JavaScript
@@ -158,14 +212,28 @@ standard_rules = {
         "class_naming": r"^[A-Z][a-zA-Z0-9]*$",   # 大驼峰命名法
         "constant_naming": r"^[A-Z_][A-Z0-9_]*$",  # 全大写字母和下划线
         "max_line_length": 120,      # 最大行长度
-        "expected_indent": 2,       # 预期缩进空格数
+        "expected_indent": 2,       # 预期缩进空格数（Standard标准）
         "min_comment_coverage": 0.1,  # 最小注释覆盖率(10%)
         "semicolon_required": False,  # 不要求分号
         "quotes_style": "single",  # 单引号
         "allow_error_naming": True,  # 允许包含Error/ERROR的命名
     },
     
-    # 其他语言规则沿用全局规则
+    # HTML 特定规则
+    "html": {
+        "max_line_length": 120,      # 最大行长度
+        "expected_indent": 2,       # 预期缩进空格数（行业最佳实践）
+        "min_comment_coverage": 0.05,  # 最小注释覆盖率(5%)
+        "allow_error_naming": True,  # 允许包含Error/ERROR的命名
+    },
+    
+    # CSS 特定规则
+    "css": {
+        "max_line_length": 120,      # 最大行长度
+        "expected_indent": 2,       # 预期缩进空格数（行业最佳实践）
+        "min_comment_coverage": 0.05,  # 最小注释覆盖率(5%)
+        "allow_error_naming": True,  # 允许包含Error/ERROR的命名
+    },
 }
 
 # 所有规则集的映射
